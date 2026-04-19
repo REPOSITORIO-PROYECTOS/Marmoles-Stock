@@ -1,0 +1,101 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: marmoles_db
+    environment:
+      POSTGRES_DB: marmoles_db
+      POSTGRES_USER: marmoles_user
+      POSTGRES_PASSWORD: marmoles_password
+      POSTGRES_INITDB_ARGS: '-E UTF8'
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - marmoles_pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marmoles_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    networks:
+      - default
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: marmoles_backend
+    restart: always
+    environment:
+      DATABASE_URL: postgresql+psycopg2://marmoles_user:marmoles_password@marmoles_db:5432/marmoles_db
+      PYTHONUNBUFFERED: 1
+    ports:
+      - "127.0.0.1:8020:8000"
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    networks:
+      - default
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: marmoles_frontend
+    restart: always
+    ports:
+      - "127.0.0.1:5120:5120"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8020
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5120"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    networks:
+      - default
+
+volumes:
+  marmoles_pgdata:
+    driver: local
+
+networks:
+  default:
+    driver: bridge

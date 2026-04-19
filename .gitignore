@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+
+# Entorno
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Venv
+venv/
+backend/venv/
+.venv/
+
+# Logs y cache
+*.log
+.cache/
+.pytest_cache/
+
+# Build/Dist
+build/
+dist/
+
+# Node/Front
+node_modules/
+
+# SQLite (evitar conflictos binarios)
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploads and Generated Content
+backend/app/uploads/
+backend/app/static/planes/
+backend/app/static/images/

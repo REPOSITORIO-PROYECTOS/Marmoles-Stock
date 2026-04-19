@@ -1,0 +1,481 @@
+MASTERCLASS — CÓMO MEJORAR MI FORMA DE PROGRAMAR EN CURSOR CON CHATGPT COMO ASISTENTE
+
+La idea central
+
+Tu productividad en Cursor no mejora cuando le pedís “hacé tal cosa”.
+Mejora cuando separás tres roles:
+
+- Vos definís objetivo, prioridad y criterio de negocio.
+- ChatGPT estructura el problema, redacta el sprint, marca riesgos, revisa lo que Cursor hizo y define el siguiente paso.
+- Cursor explora el código, propone un plan, edita archivos, corre comandos y devuelve cambios.
+
+La tesis de esta masterclass es simple:
+
+PROGRAMAR BIEN CON CURSOR = CONTEXTO CORRECTO + PEDIDO ACOTADO + VALIDACIÓN DURA + MEMORIA EXTERNA DEL PROYECTO
+
+Esto encaja perfecto con una forma de trabajo basada en:
+- arquitectura explícita
+- estructura abierta
+- carpeta mantenible
+- archivo INSTRUCCIONES.md con:
+  - dónde está todo
+  - tablas
+  - lógica
+  - reglas críticas
+
+==================================================
+1. CAMBIO DE MENTALIDAD
+==================================================
+
+Dejá de “pedir código” y empezá a “dirigir ejecución”.
+
+La mayoría usa Cursor así:
+“Arreglá esto.”
+
+Eso produce resultados irregulares porque el agente llena huecos con supuestos.
+
+La forma correcta es esta:
+
+“Este es el objetivo.
+Este es el alcance.
+Esto no se toca.
+Estos son los archivos probables.
+Este es el criterio de aceptación.
+Primero plan, después cambios.
+Al final corré build y resumime exactamente qué cambiaste.”
+
+Ese pequeño cambio sube muchísimo la calidad.
+
+==================================================
+2. LO QUE MÁS TE FRENA HOY
+==================================================
+
+1) Mezclar diseño, arquitectura, debugging y producto en un solo prompt
+Eso hace que Cursor se desordene.
+
+2) Darle objetivos grandes sin freeze de alcance
+Ejemplo malo:
+“Conectá todo, hacé responsive, arreglá errores y dejalo profesional.”
+
+Ejemplo bueno:
+“En esta iteración solo corregí el alta de productos.
+No toques autenticación ni layout global.”
+
+3) No exigir evidencia
+Nunca pedir solo “arreglá”.
+Siempre pedir:
+- causa raíz
+- archivos tocados
+- por qué fallaba
+- cómo lo validó
+- comando ejecutado
+- resultado de build/test
+
+4) Dejar que improvise arquitectura
+La arquitectura la definís vos con ChatGPT.
+Cursor la implementa.
+No al revés.
+
+==================================================
+3. SISTEMA IDEAL DE TRABAJO: YO + CHATGPT + CURSOR
+==================================================
+
+ETAPA 1
+Vos definís el objetivo de negocio.
+Ejemplo:
+“Quiero agregar alta rápida de producto con precio minorista y mayorista. Solo administrador. Sin tocar el flujo de ventas.”
+
+ETAPA 2
+ChatGPT transforma eso en sprint técnico:
+- contexto
+- alcance
+- exclusiones
+- archivos probables
+- criterio de aceptación
+- orden de trabajo
+- validación final
+
+ETAPA 3
+Ese sprint se ejecuta en Cursor, preferentemente con plan primero y ejecución después.
+
+ETAPA 4
+Cursor implementa en bloques chicos.
+Nunca 14 tareas juntas.
+Una sola iteración verificable por vez.
+
+ETAPA 5
+Se trae de vuelta:
+- diff
+- errores
+- consola
+- capturas
+- respuesta de Cursor
+
+ETAPA 6
+ChatGPT actúa como:
+- revisor técnico
+- detector de humo
+- redactor del siguiente sprint
+- auditor de arquitectura
+
+==================================================
+4. CUÁNDO USAR CADA MODO DE CURSOR
+==================================================
+
+ASK MODE
+Usarlo para entender antes de cambiar.
+Ejemplos:
+- “¿De dónde sale este dato?”
+- “¿Qué archivo maneja esta vista?”
+- “Explicame el flujo de stock.”
+- “¿Qué rompe si cambio esto?”
+
+PLAN MODE
+Usarlo cuando:
+- el cambio toca varios archivos
+- no está claro el flujo
+- hay riesgo de romper algo estable
+- querés revisar la estrategia antes de ejecutar
+
+AGENT / EJECUCIÓN
+Usarlo cuando ya está claro qué querés lograr y querés que ejecute:
+- ediciones
+- comandos
+- build
+- refactor puntual
+- conexión entre front y back
+
+==================================================
+5. REGLA DE ORO: TODA TAREA NECESITA 5 PIEZAS
+==================================================
+
+Cada pedido a Cursor debería tener:
+
+1. OBJETIVO
+Qué querés lograr.
+
+2. ALCANCE
+Qué sí puede tocar.
+
+3. EXCLUSIONES
+Qué no puede tocar.
+
+4. CRITERIO DE ACEPTACIÓN
+Cómo se verifica que está bien.
+
+5. VALIDACIÓN FINAL
+Qué comando tiene que correr.
+
+Ejemplo:
+
+Objetivo:
+Agregar alta rápida de producto desde ingreso de mercadería.
+
+Alcance:
+Solo modal de alta rápida + persistencia + validación de rol admin.
+
+No tocar:
+Login, ventas, caja, layout general ni tablas existentes fuera de productos.
+
+Criterio de aceptación:
+- El alta rápida solo la puede ver/usar el administrador.
+- Debe guardar precio minorista y mayorista.
+- Si el producto se crea desde ingreso, queda disponible sin recargar manualmente.
+- No rompe el flujo actual de escaneo.
+
+Validación final:
+- Ejecutar build.
+- Informar archivos editados.
+- Resumir exactamente qué cambió y qué no.
+
+==================================================
+6. PROMPTS MAESTROS PARA CURSOR
+==================================================
+
+PROMPT 1 — INVESTIGACIÓN
+
+Analizá este módulo sin modificar archivos.
+Quiero que me expliques:
+1) archivos involucrados,
+2) flujo de datos,
+3) dependencias,
+4) riesgos si hago cambios.
+No escribas código todavía.
+
+----------------------------------
+
+PROMPT 2 — PLANIFICACIÓN
+
+Entrá en modo plan.
+Objetivo: [objetivo].
+Antes de escribir código:
+- inspeccioná la base,
+- identificá archivos exactos,
+- proponé un plan por pasos,
+- marcá riesgos,
+- indicá qué no debería tocarse.
+Esperá mi validación conceptual antes de editar.
+
+----------------------------------
+
+PROMPT 3 — IMPLEMENTACIÓN CONTROLADA
+
+Implementá solo este alcance: [alcance].
+
+Restricciones:
+- no refactorizar partes no pedidas,
+- no renombrar archivos sin necesidad,
+- no cambiar estilos globales,
+- respetar patrones existentes,
+- todo código nuevo al final cuando sea posible,
+- conservar lo que ya funciona.
+
+Al final:
+- corré build,
+- decime archivos tocados,
+- explicá el cambio en lenguaje simple.
+
+----------------------------------
+
+PROMPT 4 — DEBUGGING SERIO
+
+No adivines.
+Primero encontrá la causa raíz del error.
+Luego proponé la corrección mínima.
+Mostrame:
+- causa,
+- archivo/s,
+- cambio exacto,
+- por qué eso resuelve el problema,
+- cómo lo validaste.
+Después aplicá la corrección y corré build.
+
+----------------------------------
+
+PROMPT 5 — REVISIÓN / AUDITORÍA
+
+Revisá los cambios de esta rama o de estos archivos.
+Busco:
+- bugs lógicos,
+- riesgos de regresión,
+- inconsistencias con el patrón existente,
+- código innecesario,
+- validaciones faltantes.
+No modifiques nada. Solo auditá.
+
+==================================================
+7. REGLAS DE PROYECTO (.cursor/rules)
+==================================================
+
+Archivo sugerido:
+.cursor/rules/core.md
+
+Contenido sugerido:
+
+# Proyecto - reglas base
+
+## Objetivo
+Mantener estable la base existente y agregar funcionalidades en capas sin romper flujos que ya funcionan.
+
+## Forma de trabajar
+- Primero analizar, luego planificar, luego editar.
+- Para cambios medianos o grandes, proponer plan antes de tocar código.
+- No improvisar arquitectura.
+- Preferir cambios mínimos y reversibles.
+
+## Restricciones críticas
+- No tocar autenticación, layout global o tablas base salvo pedido explícito.
+- No hacer refactors amplios si no fueron solicitados.
+- No mover código funcionando solo por prolijidad.
+- Si hay varias opciones, elegir la menos invasiva.
+
+## Estilo de implementación
+- Respetar patrones existentes del proyecto.
+- Todo código nuevo, cuando sea viable, agregarlo al final del archivo antes del export.
+- Mantener compatibilidad con el flujo actual entre frontend y backend.
+- No desconectar frontend del backend.
+- Explicar cambios en lenguaje simple.
+
+## Validación obligatoria
+- Después de cambios relevantes ejecutar build.
+- Si aplica, correr typecheck o test.
+- Informar errores reales de consola, no resumirlos vagamente.
+
+## Entrega obligatoria
+Siempre devolver:
+1. Archivos modificados
+2. Qué cambió
+3. Qué no cambió
+4. Riesgos remanentes
+5. Resultado del build/test
+
+## Si hay duda
+Preguntar o dejar el cambio encapsulado, nunca invadir módulos no pedidos.
+
+==================================================
+8. DOCUMENTOS BASE QUE TODO REPO TUYO DEBERÍA TENER
+==================================================
+
+1. INSTRUCCIONES.md
+Debe contener:
+- propósito del sistema
+- estructura de carpetas
+- comandos
+- módulos sensibles
+- qué no tocar
+- tablas/entidades clave
+- flujo principal
+
+2. ARQUITECTURA.md
+Debe contener:
+- mapa de módulos
+- entrada/salida de datos
+- integraciones
+- riesgos conocidos
+
+3. SPRINT_ACTUAL.md
+Debe contener:
+- qué se está haciendo
+- qué quedó estable
+- qué falta
+- criterio de aceptación
+
+==================================================
+9. REGLA CLAVE: UNA CONVERSACIÓN = UNA UNIDAD LÓGICA
+==================================================
+
+- mismo bug -> seguir el chat
+- nueva feature -> chat nuevo
+- nueva capa del sistema -> chat nuevo
+- cambio de arquitectura -> chat nuevo
+- Cursor empezó a repetir errores -> chat nuevo
+
+Esto evita arrastrar ruido y confusión.
+
+==================================================
+10. NO LE METAS DEMASIADOS ARCHIVOS “POR SI ACASO”
+==================================================
+
+Bien:
+- archivo exacto
+- screenshot del error
+- log de consola
+- diff puntual
+
+Mal:
+- 14 archivos irrelevantes
+- 3 objetivos mezclados
+- logs incompletos
+- “arreglá todo”
+
+==================================================
+11. CÓMO USAR A CHATGPT DE FORMA MÁS POTENTE
+==================================================
+
+No abrir con:
+“dame código”
+
+Abrir con:
+
+CASO 1 — NUEVA FUNCIONALIDAD
+“Quiero agregar X.
+El sistema actual hace Y.
+No quiero tocar Z.
+Haceme un sprint quirúrgico para Cursor.”
+
+CASO 2 — BUG
+“Cursor hizo esto.
+Apareció este error.
+Acá está el diff / consola / screenshot.
+Decime causa raíz y dame sprint correctivo.”
+
+CASO 3 — REVISIÓN
+“Te paso lo que hizo Cursor.
+Auditámelo.
+No me des teoría: decime si está bien, qué está mal y cómo corregirlo.”
+
+CASO 4 — REFACTOR CONTROLADO
+“Quiero ordenar esto sin romper nada.
+Definime alcance, riesgos y plan de refactor mínimo.”
+
+==================================================
+12. LOS 10 MANDAMIENTOS CON CURSOR
+==================================================
+
+1. Nunca arrancar implementando si no entendiste el flujo.
+2. No pedir cambios gigantes.
+3. Siempre definir qué no se toca.
+4. Pedir causa raíz antes de corrección.
+5. Exigir build al final.
+6. Separar feature, bugfix y refactor.
+7. Usar reglas para errores repetidos.
+8. Abrir chat nuevo cuando cambia la unidad de trabajo.
+9. Usar checkpoints como ayuda local.
+10. Git sigue siendo la verdad.
+
+==================================================
+13. LO QUE TENÉS QUE EMPEZAR A HACER DESDE HOY
+==================================================
+
+Cada repo importante debería tener:
+
+- .cursor/rules/core.md
+- INSTRUCCIONES.md
+- ARQUITECTURA.md
+- SPRINT_ACTUAL.md
+
+Y cada tarea nueva debería pasar por este embudo:
+
+1. definir objetivo con claridad
+2. pedir a ChatGPT el sprint
+3. correrlo en Cursor con plan primero
+4. implementar en bloques chicos
+5. correr build
+6. traer diff/error
+7. auditar con ChatGPT
+8. cerrar la iteración
+9. recién ahí pasar a la siguiente
+
+==================================================
+14. VERDAD INCÓMODA
+==================================================
+
+Cursor no reemplaza criterio técnico.
+Lo amplifica.
+
+Si el pedido es borroso, amplifica caos.
+Si el pedido es claro, amplifica velocidad.
+
+La ventaja real no está en “usar más IA”.
+Está en tener un método más fino que el promedio.
+
+Tu ventaja va a estar en:
+- pensar arquitectura
+- pensar flujo operativo
+- definir restricciones
+- exigir trazabilidad
+- iterar con sprints quirúrgicos
+- usar a ChatGPT como capa de criterio y auditoría
+
+==================================================
+15. CONCLUSIÓN OPERATIVA
+==================================================
+
+La forma correcta de trabajar es:
+
+VOS:
+definís objetivo, prioridad y criterio de negocio
+
+CHATGPT:
+estructura, limita, audita y corrige
+
+CURSOR:
+explora, implementa, ejecuta y devuelve evidencia
+
+Fórmula final:
+
+MENOS “HACÉ TODO”
+MÁS “HACÉ ESTO, BAJO ESTAS REGLAS, Y VALIDALO ASÍ”
+
+Esa es la diferencia entre usar Cursor como juguete
+o usarlo como una verdadera herramienta de desarrollo profesional.
