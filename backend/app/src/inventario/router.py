@@ -424,16 +424,19 @@ def actualizar_placa(placaId: str, payload: dict | None = None, estado: str | No
 
 @router.post("/api/inventario/retazos")
 def crear_retazo(payload: RetazoCreate, db: Session = Depends(get_db)):
+    area_mm2 = float(payload.ancho * payload.largo)
     r = RetazoModel(
-        material_id=payload.material_id, 
-        ancho=payload.ancho, 
-        largo=payload.largo, 
+        material_id=payload.material_id,
+        ancho=payload.ancho,
+        largo=payload.largo,
         espesor=payload.espesor,
         lote_id=payload.lote_id,
         ubicacion=payload.ubicacion,
-        estado="disponible", 
-        en_venta=False, 
-        precio=payload.precio
+        estado="disponible",
+        en_venta=False,
+        precio=payload.precio,
+        geometria_json=payload.geometria_json,
+        area_mm2=area_mm2,
     )
     db.add(r)
     db.commit()
@@ -441,46 +444,41 @@ def crear_retazo(payload: RetazoCreate, db: Session = Depends(get_db)):
 
 @router.get("/api/inventario/retazos")
 def listar_retazos(material_id: str | None = None, lote_id: str | None = None, estado: str | None = None, db: Session = Depends(get_db)):
-    from sqlalchemy import text
-    
-    # Construir query base
-    sql_query = """
-    SELECT r.id, r.material_id, r.lote_id, r.ancho, r.largo, r.estado, r.en_venta, r.precio, l.codigo_lote
-    FROM retazos r
-    LEFT JOIN lotes l ON r.lote_id = l.id
-    WHERE 1=1
-    """
-    params = {}
-    
+    q = db.query(RetazoModel)
     if material_id:
-        sql_query += " AND r.material_id = :material_id"
-        params["material_id"] = material_id
-    
+        q = q.filter(RetazoModel.material_id == material_id)
     if lote_id:
-        sql_query += " AND r.lote_id = :lote_id"
-        params["lote_id"] = lote_id
-        
+        q = q.filter(RetazoModel.lote_id == lote_id)
     if estado:
-        sql_query += " AND r.estado = :estado"
-        params["estado"] = estado
-        
-    rows = db.execute(text(sql_query), params).mappings().all()
-    
-    return [
-        {
-            "id": r.id, 
-            "material_id": r.material_id, 
-            "lote_id": r.lote_id,
-            "lote_codigo": r.codigo_lote,
-            "ancho": r.ancho, 
-            "largo": r.largo, 
-            "espesor": None, # La columna no existe en DB
-            "ubicacion": None, # La columna no existe en DB
-            "estado": r.estado, 
-            "en_venta": r.en_venta, 
-            "precio": r.precio
-        } for r in rows
-    ]
+        q = q.filter(RetazoModel.estado == estado)
+    rows = q.all()
+    lote_codes: dict[str, str | None] = {}
+    if rows:
+        ids = {r.lote_id for r in rows if r.lote_id}
+        if ids:
+            for lo in db.query(LoteModel).filter(LoteModel.id.in_(ids)).all():
+                lote_codes[lo.id] = lo.codigo_lote
+    out = []
+    for r in rows:
+        lc = lote_codes.get(r.lote_id) if r.lote_id else None
+        out.append(
+            {
+                "id": r.id,
+                "material_id": r.material_id,
+                "lote_id": r.lote_id,
+                "lote_codigo": lc,
+                "ancho": r.ancho,
+                "largo": r.largo,
+                "espesor": r.espesor,
+                "ubicacion": r.ubicacion,
+                "estado": r.estado,
+                "en_venta": r.en_venta,
+                "precio": r.precio,
+                "geometria_json": getattr(r, "geometria_json", None),
+                "area_mm2": getattr(r, "area_mm2", None) or float(r.ancho * r.largo),
+            }
+        )
+    return out
 
 @router.get("/api/inventario/retazos/sugerencias")
 def sugerencias_retazos(material_id: str, w: int, h: int, lote_id: str | None = None, db: Session = Depends(get_db)):
@@ -521,6 +519,8 @@ def actualizar_retazo(retazoId: str, payload: RetazoUpdate, db: Session = Depend
     for k, v in data.items():
         if hasattr(r, k):
             setattr(r, k, v)
+    if "ancho" in data or "largo" in data:
+        r.area_mm2 = float(r.ancho * r.largo)
     db.commit()
     return {"id": r.id}
 

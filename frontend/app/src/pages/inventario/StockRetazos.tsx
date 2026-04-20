@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../componen
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Switch } from '../../components/ui/switch';
 import { Separator } from '../../components/ui/separator';
-import { Package, DollarSign, Edit, Filter, Layers, Trash2, Printer } from 'lucide-react';
+import { Package, DollarSign, Edit, Filter, Layers, Trash2, Printer, Square } from 'lucide-react';
+import { RetazoMicroPlanoCanvas, type PlanoRectNorm } from './RetazoMicroPlanoCanvas';
 
 interface Retazo {
   id: string;
@@ -28,6 +29,7 @@ interface Retazo {
   imagenUrl?: string;
   lote?: string;
   loteId?: string;
+  geometriaJson?: string | null;
 }
 
 
@@ -47,6 +49,8 @@ export function StockRetazos() {
   const [nuevoLargo, setNuevoLargo] = useState<string>('');
   const [precioPlanchaM2, setPrecioPlanchaM2] = useState<string>('');
   const [lotesDisponibles, setLotesDisponibles] = useState<Array<{ id: string; codigo_lote: string }>>([]);
+  const [nuevoPlanoRectNorm, setNuevoPlanoRectNorm] = useState<PlanoRectNorm | null>(null);
+  const [editPlanoRectNorm, setEditPlanoRectNorm] = useState<PlanoRectNorm | null>(null);
 
   const normalizarNombre = (s: string) => (s || '').trim().toLowerCase();
 
@@ -58,24 +62,30 @@ export function StockRetazos() {
     new Map(materiales.map(m => [normalizarNombre(m.nombre), m])).values()
   );
 
-  const mapRetazo = (r: any) => ({
-    id: r.id,
-    ancho: r.ancho,
-    largo: r.largo,
-    area: r.ancho * r.largo,
-    material: materiales.find(m => m.id === r.material_id)?.nombre || 'Material',
-    color: '',
-    acabado: 'Pulido',
-    fechaRegistro: new Date().toISOString(),
-    origen: 'Inventario',
-    disponibleVenta: !!r.en_venta,
-    precioVenta: r.precio || undefined,
-    precioSugerido: Math.round((materiales.find(m => m.id === r.material_id)?.precio_m2 || 0) * (r.ancho * r.largo) / 10000),
-    estado: r.estado as 'disponible' | 'reservado' | 'vendido',
-    imagenUrl: undefined,
-    lote: r.lote_codigo,
-    loteId: r.lote_id
-  });
+  const mapRetazo = (r: any) => {
+    const areaMm2 = typeof r.area_mm2 === 'number' ? r.area_mm2 : r.ancho * r.largo;
+    const m2 = areaMm2 / 1_000_000;
+    const pm2 = materiales.find(m => m.id === r.material_id)?.precio_m2 || 0;
+    return {
+      id: r.id,
+      ancho: r.ancho,
+      largo: r.largo,
+      area: areaMm2,
+      material: materiales.find(m => m.id === r.material_id)?.nombre || 'Material',
+      color: '',
+      acabado: 'Pulido',
+      fechaRegistro: new Date().toISOString(),
+      origen: 'Inventario',
+      disponibleVenta: !!r.en_venta,
+      precioVenta: r.precio || undefined,
+      precioSugerido: Math.round(pm2 * m2),
+      estado: r.estado as 'disponible' | 'reservado' | 'vendido',
+      imagenUrl: undefined,
+      lote: r.lote_codigo,
+      loteId: r.lote_id,
+      geometriaJson: r.geometria_json ?? null,
+    };
+  };
 
   const cargarRetazos = async () => {
     try {
@@ -111,7 +121,7 @@ export function StockRetazos() {
 
   const retazosEnVenta = retazos.filter(r => r.disponibleVenta && r.estado === 'disponible');
   const valorInventarioVenta = retazosEnVenta.reduce((sum, r) => sum + (r.precioVenta || 0), 0);
-  const areaDisponibleVenta = retazosEnVenta.reduce((sum, r) => sum + r.area, 0);
+  const areaDisponibleVentaM2 = retazosEnVenta.reduce((sum, r) => sum + r.area, 0) / 1_000_000;
 
   const handleToggleVenta = async (retazoId: string) => {
     const target = retazos.find(r => r.id === retazoId);
@@ -157,7 +167,7 @@ export function StockRetazos() {
     }
   };
   const handleImprimirTicket = (r: Retazo) => {
-    const m2 = ((r.ancho * r.largo) / 10000).toFixed(2);
+    const m2 = ((r.area || 0) / 1_000_000).toFixed(2);
     const precio = (r.precioVenta || r.precioSugerido).toLocaleString();
     const html = `
       <!DOCTYPE html>
@@ -185,7 +195,7 @@ export function StockRetazos() {
         <div class="grid">
           <div class="item"><div class="label">Material</div><div class="value">${r.material}</div></div>
           <div class="item"><div class="label">Estado</div><div class="value">${r.estado}</div></div>
-          <div class="item"><div class="label">Medidas</div><div class="value">${r.largo} × ${r.ancho} cm</div></div>
+          <div class="item"><div class="label">Medidas</div><div class="value">${r.largo} × ${r.ancho} mm</div></div>
           <div class="item"><div class="label">Área</div><div class="value">${m2} m²</div></div>
           <div class="item"><div class="label">Lote</div><div class="value">${r.lote || '-'}</div></div>
           <div class="item"><div class="label">Origen</div><div class="value">${r.origen}</div></div>

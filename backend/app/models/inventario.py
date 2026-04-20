@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import String, Float, Integer, Boolean
+from sqlalchemy import String, Float, Integer, Boolean, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from .base import Base
 
@@ -90,6 +90,8 @@ class Retazo(Base):
     precio: Mapped[float] = mapped_column(Float, nullable=True)
     reservado_por: Mapped[str] = mapped_column(String(36), nullable=True)
     reservado_hasta: Mapped[str] = mapped_column(String(64), nullable=True)
+    geometria_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    area_mm2: Mapped[float | None] = mapped_column(Float, nullable=True)
 
 class MovimientoInventario(Base):
     __tablename__ = "inventario_movimientos"

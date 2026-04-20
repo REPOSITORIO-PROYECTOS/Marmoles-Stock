@@ -87,6 +87,7 @@ class RetazoUpdate(BaseModel):
     estado: Optional[str] = None
     en_venta: Optional[bool] = None
     precio: Optional[float] = None
+    geometria_json: Optional[str] = None
 
 class RetazoCreate(BaseModel):
     material_id: str
@@ -96,6 +97,7 @@ class RetazoCreate(BaseModel):
     lote_id: Optional[str] = None
     ubicacion: Optional[str] = None
     precio: Optional[float] = None
+    geometria_json: Optional[str] = None
 
 
 class PlacaCreate(BaseModel):

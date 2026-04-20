@@ -121,6 +121,10 @@ def _ensure_crm_columns():
                 conn.execute(text("ALTER TABLE retazos ADD COLUMN reservado_por VARCHAR(36)"))
             if "reservado_hasta" not in retazos_cols:
                 conn.execute(text("ALTER TABLE retazos ADD COLUMN reservado_hasta VARCHAR(64)"))
+            if "geometria_json" not in retazos_cols:
+                conn.execute(text("ALTER TABLE retazos ADD COLUMN geometria_json TEXT"))
+            if "area_mm2" not in retazos_cols:
+                conn.execute(text("ALTER TABLE retazos ADD COLUMN area_mm2 FLOAT"))
             
             # --- INVENTARIO & LOTES ---
             lotes_cols = {c["name"] for c in insp.get_columns("lotes")}
