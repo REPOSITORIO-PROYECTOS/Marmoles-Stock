@@ -6,6 +6,7 @@ import { useMateriales } from './hooks/useMateriales';
 import { useLotes } from './hooks/useLotes';
 import { MaterialFilters } from './components/MaterialFilters';
 import { MaterialesTable } from './components/MaterialesTable';
+import { StockPlacasPanel } from './components/StockPlacasPanel';
 import { DeleteMaterialDialog } from './components/DeleteMaterialDialog';
 import { normalizarNombre } from './utils/materialUtils';
 import { Material } from './types';
@@ -18,7 +19,7 @@ import { toast } from 'sonner';
 export function GestionInventario() {
   const [materialParaEliminar, setMaterialParaEliminar] = useState<Material | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [vista, setVista] = useState<'materiales' | 'productos'>('materiales');
+  const [vista, setVista] = useState<'materiales' | 'productos' | 'placas'>('materiales');
   const [articulos, setArticulos] = useState<any[]>([]);
   const [extrasCatalogo, setExtrasCatalogo] = useState<any[]>([]);
   const [loadingInsumos, setLoadingInsumos] = useState(false);
@@ -85,16 +86,18 @@ export function GestionInventario() {
 
   const fetchInsumos = async () => {
     setLoadingInsumos(true);
+    setArticulos([]);
+    setExtrasCatalogo([]);
     try {
-      const [arts, extras] = await Promise.all([
-        get<any[]>('/api/articulos'),
-        get<any[]>('/api/servicios?categoria=ExtraPresupuesto'),
-      ]);
+      const arts = await get<any[]>('/api/articulos');
       setArticulos(Array.isArray(arts) ? arts : []);
-      setExtrasCatalogo(Array.isArray(extras) ? extras : []);
-    } catch (error) {
-      console.error('Error cargando insumos y extras', error);
+    } catch {
       setArticulos([]);
+    }
+    try {
+      const extras = await get<any[]>('/api/servicios?categoria=ExtraPresupuesto');
+      setExtrasCatalogo(Array.isArray(extras) ? extras : []);
+    } catch {
       setExtrasCatalogo([]);
     } finally {
       setLoadingInsumos(false);
@@ -126,6 +129,13 @@ export function GestionInventario() {
               Stock de Materiales
             </Button>
             <Button
+              variant={vista === 'placas' ? 'default' : 'outline'}
+              onClick={() => setVista('placas')}
+              className="rounded-none border-l"
+            >
+              Stock de Placas
+            </Button>
+            <Button
               variant={vista === 'productos' ? 'default' : 'outline'}
               onClick={() => {
                 setVista('productos');
@@ -140,7 +150,9 @@ export function GestionInventario() {
         </div>
 
         {/* Contenido según vista */}
-        {vista === 'materiales' ? (
+        {vista === 'placas' ? (
+          <StockPlacasPanel />
+        ) : vista === 'materiales' ? (
           <>
             {/* Tarjetas de resumen */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 items-start">
@@ -179,7 +191,7 @@ export function GestionInventario() {
               </CardContent>
             </Card>
           </>
-        ) : (
+        ) : vista === 'productos' ? (
           <>
             {/* Lista de Stock de Insumos */}
             <Card className="border-border">
@@ -228,7 +240,10 @@ export function GestionInventario() {
                     </div>
 
                     <div>
-                      <h3 className="text-sm font-semibold mb-2">Extras (Servicios)</h3>
+                      <h3 className="text-sm font-semibold mb-2">Extras de presupuesto (opcional)</h3>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Si el módulo comercial está desactivado en el servidor, esta lista puede quedar vacía.
+                      </p>
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -260,7 +275,7 @@ export function GestionInventario() {
               </CardContent>
             </Card>
           </>
-        )}
+        ) : null}
       </div>
       <DeleteMaterialDialog
         open={showDeleteConfirm}

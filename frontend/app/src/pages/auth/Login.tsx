@@ -33,7 +33,7 @@ export function Login({ onLogin }: Props) {
       if (resp && (resp as any).token) {
         localStorage.setItem("token", (resp as any).token);
         onLogin();
-        navigate("/ventas/presupuestos", { replace: true });
+        navigate("/inventario/dashboard", { replace: true });
         return;
       }
       toast.error("Credenciales inválidas");

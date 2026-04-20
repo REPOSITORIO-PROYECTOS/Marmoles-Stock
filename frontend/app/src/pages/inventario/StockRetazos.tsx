@@ -476,8 +476,9 @@ export function StockRetazos() {
                 setPrecioPlanchaM2(String(mat?.precio_m2 ?? ''));
                 try {
                   const lots = await get<Array<{ id: string; codigo_lote: string }>>(`/api/lotes?material_id=${v}`);
-                  setLotesDisponibles(lots);
-                  setNuevoLoteId(lots[0]?.id || '');
+                  const list = Array.isArray(lots) ? lots : [];
+                  setLotesDisponibles(list);
+                  setNuevoLoteId(list[0]?.id || '');
                 } catch {
                   setLotesDisponibles([]);
                   setNuevoLoteId('');

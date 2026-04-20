@@ -365,7 +365,37 @@ def listar_placas(material_id: str | None = None, estado: str | None = None, res
     if reservado_por:
         q = q.filter(PlacaModel.reservado_por == reservado_por)
     rows = q.all()
-    return [{"id": r.id, "material_id": r.material_id, "ancho": r.ancho, "largo": r.largo, "estado": r.estado, "precio": r.precio, "codigo": r.codigo, "plano_tecnico_id": r.plano_tecnico_id, "reservado_por": r.reservado_por, "reservado_hasta": r.reservado_hasta} for r in rows]
+    if not rows:
+        return []
+    mat_ids = list({r.material_id for r in rows})
+    lote_ids = list({r.lote_id for r in rows if r.lote_id})
+    mats = {m.id: m.nombre for m in db.query(MaterialModel).filter(MaterialModel.id.in_(mat_ids)).all()}
+    lotes: dict[str, str] = {}
+    if lote_ids:
+        lotes = {l.id: l.codigo_lote for l in db.query(LoteModel).filter(LoteModel.id.in_(lote_ids)).all()}
+    out: list[dict] = []
+    for r in rows:
+        lid = r.lote_id
+        m2 = (float(r.largo) * float(r.ancho)) / 1_000_000.0 if r.largo and r.ancho else 0.0
+        out.append({
+            "id": r.id,
+            "material_id": r.material_id,
+            "material_nombre": mats.get(r.material_id) or "—",
+            "ancho": r.ancho,
+            "largo": r.largo,
+            "espesor": r.espesor,
+            "estado": r.estado,
+            "precio": r.precio,
+            "codigo": r.codigo,
+            "ubicacion": r.ubicacion,
+            "lote_id": r.lote_id,
+            "lote_codigo": lotes.get(lid) if lid else None,
+            "plano_tecnico_id": r.plano_tecnico_id,
+            "reservado_por": r.reservado_por,
+            "reservado_hasta": r.reservado_hasta,
+            "m2": round(m2, 4),
+        })
+    return out
 
 @router.patch("/api/placas/{placaId}")
 def actualizar_placa(placaId: str, payload: dict | None = None, estado: str | None = None, reservado_por: str | None = None, reservado_hasta: str | None = None, precio: float | None = None, codigo: str | None = None, plano_tecnico_id: str | None = None, db: Session = Depends(get_db), user: UserModel = Depends(require_roles(["admin", "ventas"]))):
@@ -813,6 +843,110 @@ def listar_stock_detallado(material_id: str = None, db: Session = Depends(get_db
             })
         
     return result
+
+
+@router.get("/api/inventario/dashboard/stock")
+def dashboard_stock_resumen(db: Session = Depends(get_db)):
+    """KPIs de stock: placas y retazos disponibles, no reservados y no vendidos (estado ≠ vendido)."""
+    from collections import defaultdict
+    from datetime import datetime
+
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+    def _ubicacion_label(raw: str | None) -> str:
+        s = (raw or "").strip()
+        return s if s else "Sin ubicación"
+
+    mats = {m.id: m for m in db.query(MaterialModel).all()}
+
+    q_placas = db.query(PlacaModel).filter(PlacaModel.estado == "disponible").filter(
+        (PlacaModel.reservado_hasta == None) | (PlacaModel.reservado_hasta < now)
+    )
+    placas = q_placas.all()
+
+    q_retazos = db.query(RetazoModel).filter(RetazoModel.estado == "disponible").filter(
+        (RetazoModel.reservado_hasta == None) | (RetazoModel.reservado_hasta < now)
+    )
+    retazos = q_retazos.all()
+
+    by_u: dict[str, dict[str, float | int]] = defaultdict(
+        lambda: {"m2": 0.0, "valor": 0.0, "piezas_placa": 0, "piezas_retazo": 0}
+    )
+    by_m: dict[str, dict[str, float]] = defaultdict(lambda: {"m2": 0.0, "valor": 0.0})
+
+    m2_placas = 0.0
+    m2_retazos = 0.0
+
+    for p in placas:
+        area_m2 = (float(p.ancho) * float(p.largo)) / 1_000_000.0
+        mat = mats.get(p.material_id)
+        precio_m2 = float(mat.precio_m2 or 0.0) if mat else 0.0
+        val = area_m2 * precio_m2
+        u = _ubicacion_label(p.ubicacion)
+        urow = by_u[u]
+        urow["m2"] = float(urow["m2"]) + area_m2
+        urow["valor"] = float(urow["valor"]) + val
+        urow["piezas_placa"] = int(urow["piezas_placa"]) + 1
+        mid = p.material_id
+        by_m[mid]["m2"] = by_m[mid]["m2"] + area_m2
+        by_m[mid]["valor"] = by_m[mid]["valor"] + val
+        m2_placas += area_m2
+
+    for r in retazos:
+        area_m2 = (float(r.ancho) * float(r.largo)) / 1_000_000.0
+        mat = mats.get(r.material_id)
+        precio_m2 = float(mat.precio_m2 or 0.0) if mat else 0.0
+        val = area_m2 * precio_m2
+        u = _ubicacion_label(r.ubicacion)
+        urow = by_u[u]
+        urow["m2"] = float(urow["m2"]) + area_m2
+        urow["valor"] = float(urow["valor"]) + val
+        urow["piezas_retazo"] = int(urow["piezas_retazo"]) + 1
+        mid = r.material_id
+        by_m[mid]["m2"] = by_m[mid]["m2"] + area_m2
+        by_m[mid]["valor"] = by_m[mid]["valor"] + val
+        m2_retazos += area_m2
+
+    por_ubicacion = [
+        {
+            "ubicacion": k,
+            "m2": round(float(v["m2"]), 3),
+            "valor_estimado": round(float(v["valor"]), 2),
+            "piezas_placa": int(v["piezas_placa"]),
+            "piezas_retazo": int(v["piezas_retazo"]),
+            "piezas_total": int(v["piezas_placa"]) + int(v["piezas_retazo"]),
+        }
+        for k, v in sorted(by_u.items(), key=lambda x: -float(x[1]["m2"]))
+    ]
+
+    por_material: list[dict[str, str | float]] = []
+    for mid, v in by_m.items():
+        mat = mats.get(mid)
+        por_material.append({
+            "material_id": mid,
+            "nombre": mat.nombre if mat else "Desconocido",
+            "m2": round(v["m2"], 3),
+            "valor_estimado": round(v["valor"], 2),
+        })
+    por_material.sort(key=lambda x: -float(x["m2"]))
+
+    valor_total = sum(float(v["valor"]) for v in by_u.values())
+
+    return {
+        "valoracion": "m2 × precio_m2 del material (lista)",
+        "filtro_piezas": "estado=disponible; excluye reservas vigentes (retazos/placas no vendidos)",
+        "totales": {
+            "piezas_placa": len(placas),
+            "piezas_retazo": len(retazos),
+            "m2_placas": round(m2_placas, 3),
+            "m2_retazos": round(m2_retazos, 3),
+            "m2_total": round(m2_placas + m2_retazos, 3),
+            "valor_estimado_total": round(valor_total, 2),
+        },
+        "por_ubicacion": por_ubicacion,
+        "por_material": por_material,
+    }
+
 
 @router.post("/api/inventario/placas")
 def crear_placa(payload: PlacaCreate, db: Session = Depends(get_db)):

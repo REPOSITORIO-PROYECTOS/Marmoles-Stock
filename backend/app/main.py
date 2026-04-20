@@ -32,6 +32,11 @@ from .src.logistica.encuestas import router as encuestas_router
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Modo depósito: false por defecto (solo inventario + auth). Activar comercial con ENABLE_COMMERCIAL_MODULES=true
+def _commercial_modules_enabled() -> bool:
+    raw = os.getenv("ENABLE_COMMERCIAL_MODULES", "false").strip().lower()
+    return raw in ("1", "true", "yes", "on")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
@@ -269,15 +274,18 @@ app.mount("/static/planes", StaticFiles(directory="app/static/planes"), name="pl
 
 app.include_router(auth_router)
 app.include_router(inventario_router)
-if produccion_router:
-    app.include_router(produccion_router)
-app.include_router(crm_router)
-app.include_router(presupuestos_router)
-# COMENTADO - Router eliminado (módulo Producción eliminado)
-# if finanzas_produccion_router:
-#     app.include_router(finanzas_produccion_router)
-app.include_router(finanzas_router)
-app.include_router(planos_tecnicos_router)
-app.include_router(servicios_router)
-app.include_router(logistica_router)
-app.include_router(encuestas_router)
+if _commercial_modules_enabled():
+    if produccion_router:
+        app.include_router(produccion_router)
+    app.include_router(crm_router)
+    app.include_router(presupuestos_router)
+    # COMENTADO - Router eliminado (módulo Producción eliminado)
+    # if finanzas_produccion_router:
+    #     app.include_router(finanzas_produccion_router)
+    app.include_router(finanzas_router)
+    app.include_router(planos_tecnicos_router)
+    app.include_router(servicios_router)
+    app.include_router(logistica_router)
+    app.include_router(encuestas_router)
+else:
+    logger.info("Modo inventario: routers comerciales (CRM, presupuestos, finanzas, etc.) desactivados.")

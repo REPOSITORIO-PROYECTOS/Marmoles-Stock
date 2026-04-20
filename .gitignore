@@ -11,6 +11,8 @@ __pycache__/
 .env.*
 !.env.example
 !**/.env.example
+!.env.sqlite.example
+!**/.env.sqlite.example
 
 # Venv
 venv/

@@ -56,6 +56,25 @@ git push -u origin main
   - `VITE_API_BASE_URL=http://127.0.0.1:8000`
 - Si no se define, el frontend usa `http://127.0.0.1:8000` en modo dev y `https://marmoles.sistemataup.online` en producción (`frontend/app/src/config.ts:4–7`).
 
+### Modo local con SQLite (sin Postgres)
+- Base usada en la prueba: `marmoles/dev_inventory_e2e.db` (copia de `dev_inventory.db` + import Excel).
+- En **PowerShell**, desde `marmoles/backend`:
+  ```powershell
+  $env:DATABASE_URL = "sqlite:///../dev_inventory_e2e.db"
+  .\.venv\Scripts\python scripts/import_control_inventario_xlsx.py --dry-run
+  .\.venv\Scripts\python scripts/import_control_inventario_xlsx.py --create-materials
+  .\.venv\Scripts\uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+  ```
+- O desde `marmoles`: `.\scripts\run_local_sqlite.ps1` (usa la misma DB por ruta absoluta).
+- Luego Postgres en producción: volvé a `DATABASE_URL` de `backend/.env.example` y `docker compose`.
+
+### Importar placas desde Excel (Control de Bloques)
+- Archivo esperado en la raíz del workspace padre: `Control_Inventario_Marmoleria 2026.xlsx` (o pasá `--file`).
+- Requiere PostgreSQL en marcha (`docker compose up -d db` o `.\scripts\bootstrap_db.ps1`).
+- Simulación: `cd backend` → `.\.venv\Scripts\python scripts/import_control_inventario_xlsx.py --dry-run`
+- Carga real (crea materiales si no existen): `.\.venv\Scripts\python scripts/import_control_inventario_xlsx.py --create-materials`
+- La hoja **RECORTES** (piezas en L con varios tramos) no se importa automáticamente; son geometrías compuestas.
+
 ## Scripts útiles
 - Frontend principal:
   - `cd frontend/app && npm run dev` inicia el servidor de desarrollo.

@@ -1,8 +1,6 @@
 import React, { type ReactNode } from 'react';
 import {
-  Users,
-  FileText,
-  DollarSign,
+  LayoutDashboard,
   Package,
   ShoppingCart,
   Layers,
@@ -24,10 +22,7 @@ interface MenuItem {
 }
 
 const menuItems: MenuItem[] = [
-  { path: '/ventas/presupuestos', label: 'Crear Presupuesto', icon: <FileText className="h-5 w-5" />, category: 'CRM/Ventas' },
-  { path: '/ventas/leads', label: 'Pipeline de Leads', icon: <Users className="h-5 w-5" />, category: 'CRM/Ventas' },
-  { path: '/finanzas', label: 'Finanzas y Cobranzas', icon: <DollarSign className="h-5 w-5" />, category: 'Financiero' },
-
+  { path: '/inventario/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" />, category: 'Inventario' },
   { path: '/inventario/gestion', label: 'Gestión Inventario', icon: <Package className="h-5 w-5" />, category: 'Inventario' },
   { path: '/inventario/compras', label: 'Compras y Proveedores', icon: <ShoppingCart className="h-5 w-5" />, category: 'Inventario' },
   { path: '/inventario/retazos', label: 'Stock de Retazos', icon: <Layers className="h-5 w-5" />, category: 'Inventario' },
@@ -92,7 +87,7 @@ export function Sidebar({ }: SidebarProps) {
               <h1 className="text-sidebar-foreground text-xs font-bold leading-tight">
                 MUNDO DI MARMI
               </h1>
-              <p className="text-sidebar-foreground/70 text-sm">Sistema de Gestión Comercial</p>
+              <p className="text-sidebar-foreground/70 text-sm">Inventario y depósito</p>
             </div>
           </div>
         </div>

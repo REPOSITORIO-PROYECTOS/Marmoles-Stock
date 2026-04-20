@@ -36,6 +36,13 @@ const setupFetchMock = () => {
         if (u.includes('/api/inventario/retazos/ventas')) {
             return { ok: true, json: async () => [], headers: { get: () => 'application/json' } } as any;
         }
+        if (u.includes('/api/lotes?material_id=')) {
+            return {
+                ok: true,
+                json: async () => [{ id: 'l1', codigo_lote: 'L-001' }],
+                headers: { get: () => 'application/json' },
+            } as any;
+        }
         return { ok: true, json: async () => ({}), headers: { get: () => 'application/json' } } as any;
     };
     return calls;
@@ -76,7 +83,7 @@ describe('StockRetazos', () => {
         await user.click(createBtn);
 
         // El inventario debería mostrar "Retazos en Venta" contadores actualizados
-        const resumen = await screen.findByText(/Inventario de Retazos/i);
+        const resumen = await screen.findByRole('heading', { name: /Stock de Retazos/i });
         expect(resumen).toBeDefined();
         // Y el valor de Área Disponible debería reflejar el nuevo retazo
         const area = await screen.findByText(/Área Disponible/i);

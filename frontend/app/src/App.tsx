@@ -4,10 +4,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Login } from './pages/auth/Login';
 import { Toaster } from './components/ui/sonner';
 
-// Lazy loading de componentes pesados para mejorar el tiempo de carga inicial
-const ConstructorPresupuestos = lazy(() => import('./pages/ventas/ConstructorPresupuestos').then(m => ({ default: m.ConstructorPresupuestos })));
-const PipelineLeads = lazy(() => import('./components/ventas/PipelineLeads').then(m => ({ default: m.PipelineLeads })));
-const FinanzasPage = lazy(() => import('./pages/finanzas/FinanzasPage').then(m => ({ default: m.FinanzasPage })));
+const DashboardStock = lazy(() => import('./pages/inventario/DashboardStock').then(m => ({ default: m.DashboardStock })));
 const GestionInventario = lazy(() => import('./pages/inventario/GestionInventario').then(m => ({ default: m.GestionInventario })));
 const ComprasProveedores = lazy(() => import('./pages/inventario/ComprasProveedoresRefactored').then(m => ({ default: m.ComprasProveedoresRefactored })));
 const StockRetazos = lazy(() => import('./pages/inventario/StockRetazos').then(m => ({ default: m.StockRetazos })));
@@ -93,19 +90,19 @@ export default function App() {
       />
 
       <Route element={<ProtectedShell authed={authed} />}>
-        <Route path="/" element={<Navigate to="/ventas/presupuestos" replace />} />
+        <Route path="/" element={<Navigate to="/inventario/dashboard" replace />} />
 
-        <Route path="/ventas/presupuestos" element={<Suspense fallback={<LoadingFallback />}><ConstructorPresupuestos /></Suspense>} />
-        <Route path="/ventas/constructor" element={<Suspense fallback={<LoadingFallback />}><ConstructorPresupuestos /></Suspense>} />
-        <Route path="/ventas/leads" element={<Suspense fallback={<LoadingFallback />}><PipelineLeads /></Suspense>} />
+        <Route path="/ventas/presupuestos" element={<Navigate to="/inventario/dashboard" replace />} />
+        <Route path="/ventas/constructor" element={<Navigate to="/inventario/dashboard" replace />} />
+        <Route path="/ventas/leads" element={<Navigate to="/inventario/dashboard" replace />} />
+        <Route path="/finanzas" element={<Navigate to="/inventario/dashboard" replace />} />
 
-        <Route path="/finanzas" element={<Suspense fallback={<LoadingFallback />}><FinanzasPage /></Suspense>} />
-
+        <Route path="/inventario/dashboard" element={<Suspense fallback={<LoadingFallback />}><DashboardStock /></Suspense>} />
         <Route path="/inventario/gestion" element={<Suspense fallback={<LoadingFallback />}><GestionInventario /></Suspense>} />
         <Route path="/inventario/compras" element={<Suspense fallback={<LoadingFallback />}><ComprasProveedores /></Suspense>} />
         <Route path="/inventario/retazos" element={<Suspense fallback={<LoadingFallback />}><StockRetazos /></Suspense>} />
 
-        <Route path="*" element={<Navigate to="/ventas/presupuestos" replace />} />
+        <Route path="*" element={<Navigate to="/inventario/dashboard" replace />} />
       </Route>
     </Routes>
   );
