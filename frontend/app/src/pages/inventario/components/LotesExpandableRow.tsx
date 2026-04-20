@@ -1,10 +1,23 @@
-import React, { useState } from 'react';
-import { Badge, Info, Package, Edit2, Check, X, Printer } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Info, Package, Edit2, Check, X, Printer } from 'lucide-react';
 import { Lote, Material } from '../types';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
-import { patch } from '../../../api';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
+import { get, patch } from '../../../api';
 import { notifySuccess, notifyError } from '../../../utils/notifications';
+
+interface PlacaInventario {
+    id: string;
+    material_nombre: string;
+    largo: number;
+    ancho: number;
+    espesor?: number | null;
+    m2?: number;
+    codigo?: string | null;
+    ubicacion?: string | null;
+    estado: string;
+}
 
 interface LotesExpandableRowProps {
     material: Material;
@@ -28,6 +41,48 @@ export const LotesExpandableRow: React.FC<LotesExpandableRowProps> = ({
     const [editingPrecioVenta, setEditingPrecioVenta] = useState(0);
     const [editingPrecioMayorista, setEditingPrecioMayorista] = useState(0);
     const [isSaving, setIsSaving] = useState(false);
+    const [placasPorLote, setPlacasPorLote] = useState<Record<string, PlacaInventario[]>>({});
+    const [loadingPlacas, setLoadingPlacas] = useState(false);
+
+    const loteIdsKey = useMemo(
+        () => lotes.map((l) => l.id).sort().join('|'),
+        [lotes],
+    );
+
+    useEffect(() => {
+        if (!lotes.length || !material.id) {
+            setPlacasPorLote({});
+            return;
+        }
+        let cancelled = false;
+        setLoadingPlacas(true);
+        (async () => {
+            try {
+                const results = await Promise.all(
+                    lotes.map(async (l) => {
+                        try {
+                            const rows = await get<PlacaInventario[]>(
+                                `/api/placas?lote_id=${encodeURIComponent(l.id)}`,
+                            );
+                            return [l.id, Array.isArray(rows) ? rows : []] as const;
+                        } catch {
+                            return [l.id, []] as const;
+                        }
+                    }),
+                );
+                if (!cancelled) {
+                    setPlacasPorLote(Object.fromEntries(results));
+                }
+            } finally {
+                if (!cancelled) {
+                    setLoadingPlacas(false);
+                }
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [material.id, loteIdsKey, lotes.length]);
 
     const iniciarEdicion = (lote: Lote) => {
         setEditingLoteId(lote.id);
@@ -276,7 +331,7 @@ export const LotesExpandableRow: React.FC<LotesExpandableRowProps> = ({
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 bg-muted/30 p-3 rounded-lg border border-muted-foreground/10">
                             <div className="space-y-0.5">
                                 <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">
-                                    Largo y Ancho (cm)
+                                    Lote referencia (cm)
                                 </span>
                                 <div className="text-sm font-bold flex items-center gap-1">
                                     {l.largo_m && l.ancho_m ? (
@@ -291,6 +346,9 @@ export const LotesExpandableRow: React.FC<LotesExpandableRowProps> = ({
                                         'N/A'
                                     )}
                                 </div>
+                                <span className="text-[8px] text-muted-foreground">
+                                    Cada placa abajo está en <strong>mm</strong> (como el Excel).
+                                </span>
                             </div>
 
                             <div className="space-y-0.5 border-l border-muted-foreground/20 pl-4">
@@ -363,7 +421,7 @@ export const LotesExpandableRow: React.FC<LotesExpandableRowProps> = ({
 
                             <div className="space-y-0.5 border-l border-muted-foreground/20 pl-4">
                                 <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">
-                                    Ubicación
+                                    Ubicación lote
                                 </span>
                                 {editingLoteId === l.id ? (
                                     <Input
@@ -378,6 +436,9 @@ export const LotesExpandableRow: React.FC<LotesExpandableRowProps> = ({
                                         {l.ubicacion || 'Sin ubicación'}
                                     </div>
                                 )}
+                                <span className="text-[8px] text-muted-foreground">
+                                    En placas: <strong>Bloque</strong> = ubicación física (Excel).
+                                </span>
                             </div>
 
                             <div className="space-y-0.5 border-l border-muted-foreground/20 pl-4">
@@ -388,6 +449,66 @@ export const LotesExpandableRow: React.FC<LotesExpandableRowProps> = ({
                                     {l.proveedor_nombre || 'No especificado'}
                                 </div>
                             </div>
+                        </div>
+
+                        <div className="mt-3 rounded-lg border border-dashed border-primary/25 bg-primary/5 p-3">
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-primary mb-2">
+                                Placas de este lote · medidas en mm · m² por placa · bloque
+                            </div>
+                            {loadingPlacas ? (
+                                <p className="text-xs text-muted-foreground">Cargando placas…</p>
+                            ) : (placasPorLote[l.id]?.length ?? 0) === 0 ? (
+                                <p className="text-xs text-muted-foreground">
+                                    No hay placas individuales vinculadas a este lote (solo stock agregado).
+                                </p>
+                            ) : (
+                                <div className="overflow-x-auto max-h-56 overflow-y-auto rounded-md border bg-background">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead className="text-[10px] whitespace-nowrap">Código</TableHead>
+                                                <TableHead className="text-[10px]">Material</TableHead>
+                                                <TableHead className="text-[10px] whitespace-nowrap">Largo × Ancho (mm)</TableHead>
+                                                <TableHead className="text-[10px]">Esp. mm</TableHead>
+                                                <TableHead className="text-[10px]">m²</TableHead>
+                                                <TableHead className="text-[10px]">Bloque</TableHead>
+                                                <TableHead className="text-[10px]">Estado</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {(placasPorLote[l.id] ?? []).map((p) => {
+                                                const m2 =
+                                                    typeof p.m2 === 'number'
+                                                        ? p.m2
+                                                        : (p.largo * p.ancho) / 1_000_000;
+                                                return (
+                                                    <TableRow key={p.id}>
+                                                        <TableCell className="font-mono text-[11px] py-1.5 whitespace-nowrap">
+                                                            {p.codigo || '—'}
+                                                        </TableCell>
+                                                        <TableCell className="text-xs py-1.5 max-w-[200px]">
+                                                            {p.material_nombre || material.nombre}
+                                                        </TableCell>
+                                                        <TableCell className="tabular-nums text-xs py-1.5 whitespace-nowrap">
+                                                            {p.largo} × {p.ancho}
+                                                        </TableCell>
+                                                        <TableCell className="text-xs py-1.5">{p.espesor ?? '—'}</TableCell>
+                                                        <TableCell className="tabular-nums text-xs py-1.5">
+                                                            {m2.toFixed(3)}
+                                                        </TableCell>
+                                                        <TableCell className="text-xs font-medium py-1.5">
+                                                            {p.ubicacion || '—'}
+                                                        </TableCell>
+                                                        <TableCell className="text-[10px] py-1.5 text-muted-foreground">
+                                                            {p.estado}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            )}
                         </div>
 
                         {l.notas && (

@@ -148,22 +148,41 @@ export function StockRetazos() {
       ...retazo,
       precioVenta: retazo.precioVenta ?? retazo.precioSugerido
     });
+    setEditPlanoRectNorm(null);
+    if (retazo.geometriaJson) {
+      try {
+        const p = JSON.parse(retazo.geometriaJson) as { rect_norm?: PlanoRectNorm };
+        if (p.rect_norm) setEditPlanoRectNorm(p.rect_norm);
+      } catch { /* ignore */ }
+    }
     setModoEdicion(true);
   };
 
   const handleGuardarEdicion = async () => {
     if (retazoSeleccionado) {
       try {
+        const l = Math.round(retazoSeleccionado.largo);
+        const w = Math.round(retazoSeleccionado.ancho);
+        const geoPayload: Record<string, unknown> = {
+          v: 1,
+          tipo: 'rect',
+          largo_mm: l,
+          ancho_mm: w,
+          actualizado_en: new Date().toISOString(),
+        };
+        if (editPlanoRectNorm) geoPayload.rect_norm = editPlanoRectNorm;
         await put(`/api/inventario/retazos/${retazoSeleccionado.id}`, {
-          ancho: retazoSeleccionado.ancho,
-          largo: retazoSeleccionado.largo,
+          ancho: w,
+          largo: l,
           precio: retazoSeleccionado.precioVenta,
-          en_venta: retazoSeleccionado.disponibleVenta
+          en_venta: retazoSeleccionado.disponibleVenta,
+          geometria_json: JSON.stringify(geoPayload),
         });
         await cargarRetazos();
       } catch { }
       setModoEdicion(false);
       setRetazoSeleccionado(null);
+      setEditPlanoRectNorm(null);
     }
   };
   const handleImprimirTicket = (r: Retazo) => {
@@ -218,20 +237,36 @@ export function StockRetazos() {
   const anchoNum = parseFloat(nuevoAncho) || 0;
   const largoNum = parseFloat(nuevoLargo) || 0;
   const precioM2Num = parseFloat(precioPlanchaM2) || 0;
-  const areaNuevoRetazo = Math.max(0, Math.round(anchoNum * largoNum));
-  const precioEstimadoNuevoRetazo = Math.round(precioM2Num * (areaNuevoRetazo / 10000));
+  const areaNuevoRetazoMm2 = Math.max(0, Math.round(anchoNum * largoNum));
+  const m2NuevoRetazo = areaNuevoRetazoMm2 / 1_000_000;
+  const precioEstimadoNuevoRetazo = Math.round(precioM2Num * m2NuevoRetazo);
+
+  const buildGeometriaNuevo = (l: number, w: number): string | undefined => {
+    if (l <= 0 || w <= 0) return undefined;
+    const payload: Record<string, unknown> = {
+      v: 1,
+      tipo: 'rect',
+      largo_mm: Math.round(l),
+      ancho_mm: Math.round(w),
+      creado_en: new Date().toISOString(),
+    };
+    if (nuevoPlanoRectNorm) payload.rect_norm = nuevoPlanoRectNorm;
+    return JSON.stringify(payload);
+  };
 
   const handleCrearNuevoRetazo = async () => {
     if (!nuevoMaterialId || anchoNum <= 0 || largoNum <= 0 || precioM2Num <= 0) return;
     try {
+      const geo = buildGeometriaNuevo(largoNum, anchoNum);
       await post('/api/inventario/retazos', {
         material_id: nuevoMaterialId,
         lote_id: nuevoLoteId || undefined,
-        ancho: anchoNum,
-        largo: largoNum,
+        ancho: Math.round(anchoNum),
+        largo: Math.round(largoNum),
         precio: precioEstimadoNuevoRetazo || 0,
         espesor: 20,
-        ubicacion: 'Inventario General'
+        ubicacion: 'Inventario General',
+        geometria_json: geo,
       });
       await cargarRetazos();
       setIsAddDialogOpen(false);
@@ -241,6 +276,7 @@ export function StockRetazos() {
       setNuevoLargo('');
       setPrecioPlanchaM2('');
       setLotesDisponibles([]);
+      setNuevoPlanoRectNorm(null);
     } catch { }
   };
 
@@ -269,7 +305,7 @@ export function StockRetazos() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Área Disponible</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{Math.round(areaDisponibleVenta || 0).toLocaleString()} cm²</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{areaDisponibleVentaM2.toFixed(2)} m²</p>
               </div>
               <Layers className="h-8 w-8 text-green-600" />
             </div>
@@ -385,9 +421,16 @@ export function StockRetazos() {
                       <p className="font-semibold text-gray-900 truncate">{retazo.material}</p>
                       {retazo.color && <p className="text-sm text-gray-600">{retazo.color}</p>}
                     </div>
-                    {retazo.disponibleVenta && (
-                      <Badge className="bg-green-100 text-green-800 text-xs">En venta</Badge>
-                    )}
+                    <div className="flex flex-col items-end gap-1">
+                      {retazo.disponibleVenta && (
+                        <Badge className="bg-green-100 text-green-800 text-xs">En venta</Badge>
+                      )}
+                      {retazo.geometriaJson && (
+                        <Badge variant="outline" className="text-xs gap-1">
+                          <Square className="h-3 w-3" /> Plano
+                        </Badge>
+                      )}
+                    </div>
                   </div>
 
                   <Separator />
@@ -396,11 +439,11 @@ export function StockRetazos() {
                   <div className="space-y-1">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Medidas:</span>
-                      <span className="font-medium text-gray-900">{retazo.largo} × {retazo.ancho} cm</span>
+                      <span className="font-medium text-gray-900">{retazo.largo} × {retazo.ancho} mm</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Área:</span>
-                      <span className="font-medium text-gray-900">{((retazo.area || 0) / 10000).toFixed(2)} m²</span>
+                      <span className="font-medium text-gray-900">{((retazo.area || 0) / 1_000_000).toFixed(2)} m²</span>
                     </div>
                     {retazo.lote && (
                       <div className="flex justify-between text-sm">
@@ -472,8 +515,11 @@ export function StockRetazos() {
       </Card>
 
       {/* Dialog Añadir Retazo */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="max-w-md">
+      <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+        setIsAddDialogOpen(open);
+        if (!open) setNuevoPlanoRectNorm(null);
+      }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Añadir Retazo</DialogTitle>
           </DialogHeader>
@@ -523,7 +569,7 @@ export function StockRetazos() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="largo-nuevo" className="text-sm">Largo (cm)</Label>
+                <Label htmlFor="largo-nuevo" className="text-sm">Largo (mm)</Label>
                 <Input
                   id="largo-nuevo"
                   type="number"
@@ -532,7 +578,7 @@ export function StockRetazos() {
                 />
               </div>
               <div>
-                <Label htmlFor="ancho-nuevo" className="text-sm">Ancho (cm)</Label>
+                <Label htmlFor="ancho-nuevo" className="text-sm">Ancho (mm)</Label>
                 <Input
                   id="ancho-nuevo"
                   type="number"
@@ -542,11 +588,21 @@ export function StockRetazos() {
               </div>
             </div>
 
+            <RetazoMicroPlanoCanvas
+              largoMm={Math.max(50, Math.round(largoNum) || 800)}
+              anchoMm={Math.max(50, Math.round(anchoNum) || 400)}
+              onMedidasChange={(l, w) => {
+                setNuevoLargo(String(l));
+                setNuevoAncho(String(w));
+              }}
+              onPlanoChange={(d) => setNuevoPlanoRectNorm(d?.rect_norm ?? null)}
+            />
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-sm">Área</Label>
                 <div className="p-2 border rounded-md text-sm font-medium bg-gray-50">
-                  {(areaNuevoRetazo / 10000).toFixed(2)} m²
+                  {m2NuevoRetazo.toFixed(2)} m²
                 </div>
               </div>
               <div>
@@ -570,7 +626,7 @@ export function StockRetazos() {
 
             <Button
               className="w-full"
-              disabled={!nuevoMaterialId || areaNuevoRetazo <= 0 || precioM2Num <= 0}
+              disabled={!nuevoMaterialId || areaNuevoRetazoMm2 <= 0 || precioM2Num <= 0}
               onClick={handleCrearNuevoRetazo}
             >
               Crear Retazo
@@ -580,8 +636,14 @@ export function StockRetazos() {
       </Dialog>
 
       {/* Dialog Editar Retazo */}
-      <Dialog open={modoEdicion} onOpenChange={setModoEdicion}>
-        <DialogContent className="max-w-md">
+      <Dialog open={modoEdicion} onOpenChange={(open) => {
+        setModoEdicion(open);
+        if (!open) {
+          setRetazoSeleccionado(null);
+          setEditPlanoRectNorm(null);
+        }
+      }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Retazo</DialogTitle>
           </DialogHeader>
@@ -589,7 +651,7 @@ export function StockRetazos() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="largo" className="text-sm">Largo (cm)</Label>
+                  <Label htmlFor="largo" className="text-sm">Largo (mm)</Label>
                   <Input
                     id="largo"
                     type="number"
@@ -602,7 +664,7 @@ export function StockRetazos() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="ancho" className="text-sm">Ancho (cm)</Label>
+                  <Label htmlFor="ancho" className="text-sm">Ancho (mm)</Label>
                   <Input
                     id="ancho"
                     type="number"
@@ -616,10 +678,22 @@ export function StockRetazos() {
                 </div>
               </div>
 
+              <RetazoMicroPlanoCanvas
+                largoMm={Math.max(50, Math.round(retazoSeleccionado.largo) || 800)}
+                anchoMm={Math.max(50, Math.round(retazoSeleccionado.ancho) || 400)}
+                onMedidasChange={(l, w) => setRetazoSeleccionado({
+                  ...retazoSeleccionado,
+                  largo: l,
+                  ancho: w,
+                  area: l * w,
+                })}
+                onPlanoChange={(d) => setEditPlanoRectNorm(d?.rect_norm ?? null)}
+              />
+
               <div>
                 <Label className="text-sm">Área</Label>
                 <div className="p-2 border rounded-md text-sm font-medium bg-gray-50">
-                  {((retazoSeleccionado.area || 0) / 10000).toFixed(2)} m²
+                  {((retazoSeleccionado.area || 0) / 1_000_000).toFixed(2)} m²
                 </div>
               </div>
 

@@ -6,7 +6,6 @@ import { useMateriales } from './hooks/useMateriales';
 import { useLotes } from './hooks/useLotes';
 import { MaterialFilters } from './components/MaterialFilters';
 import { MaterialesTable } from './components/MaterialesTable';
-import { StockPlacasPanel } from './components/StockPlacasPanel';
 import { DeleteMaterialDialog } from './components/DeleteMaterialDialog';
 import { normalizarNombre } from './utils/materialUtils';
 import { Material } from './types';
@@ -19,7 +18,7 @@ import { toast } from 'sonner';
 export function GestionInventario() {
   const [materialParaEliminar, setMaterialParaEliminar] = useState<Material | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [vista, setVista] = useState<'materiales' | 'productos' | 'placas'>('materiales');
+  const [vista, setVista] = useState<'materiales' | 'productos'>('materiales');
   const [articulos, setArticulos] = useState<any[]>([]);
   const [extrasCatalogo, setExtrasCatalogo] = useState<any[]>([]);
   const [loadingInsumos, setLoadingInsumos] = useState(false);
@@ -129,13 +128,6 @@ export function GestionInventario() {
               Stock de Materiales
             </Button>
             <Button
-              variant={vista === 'placas' ? 'default' : 'outline'}
-              onClick={() => setVista('placas')}
-              className="rounded-none border-l"
-            >
-              Stock de Placas
-            </Button>
-            <Button
               variant={vista === 'productos' ? 'default' : 'outline'}
               onClick={() => {
                 setVista('productos');
@@ -150,9 +142,7 @@ export function GestionInventario() {
         </div>
 
         {/* Contenido según vista */}
-        {vista === 'placas' ? (
-          <StockPlacasPanel />
-        ) : vista === 'materiales' ? (
+        {vista === 'materiales' ? (
           <>
             {/* Tarjetas de resumen */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 items-start">
@@ -191,7 +181,7 @@ export function GestionInventario() {
               </CardContent>
             </Card>
           </>
-        ) : vista === 'productos' ? (
+        ) : (
           <>
             {/* Lista de Stock de Insumos */}
             <Card className="border-border">
@@ -275,7 +265,7 @@ export function GestionInventario() {
               </CardContent>
             </Card>
           </>
-        ) : null}
+        )}
       </div>
       <DeleteMaterialDialog
         open={showDeleteConfirm}

@@ -356,10 +356,18 @@ def crear_placa(material_id: str, ancho: int, largo: int, precio: float | None =
     return {"id": p.id, "material_id": p.material_id, "ancho": p.ancho, "largo": p.largo, "estado": p.estado, "precio": p.precio}
 
 @router.get("/api/placas")
-def listar_placas(material_id: str | None = None, estado: str | None = None, reservado_por: str | None = None, db: Session = Depends(get_db)):
+def listar_placas(
+    material_id: str | None = None,
+    lote_id: str | None = None,
+    estado: str | None = None,
+    reservado_por: str | None = None,
+    db: Session = Depends(get_db),
+):
     q = db.query(PlacaModel)
     if material_id:
         q = q.filter(PlacaModel.material_id == material_id)
+    if lote_id:
+        q = q.filter(PlacaModel.lote_id == lote_id)
     if estado:
         q = q.filter(PlacaModel.estado == estado)
     if reservado_por:

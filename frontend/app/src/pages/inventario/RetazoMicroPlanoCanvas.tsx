@@ -39,7 +39,12 @@ export function RetazoMicroPlanoCanvas({
   const draw = useCallback(() => {
     const c = canvasRef.current;
     if (!c) return;
-    const ctx = c.getContext('2d');
+    let ctx: CanvasRenderingContext2D | null = null;
+    try {
+      ctx = c.getContext('2d');
+    } catch {
+      return;
+    }
     if (!ctx) return;
     ctx.fillStyle = '#f8fafc';
     ctx.fillRect(0, 0, CW, CH);

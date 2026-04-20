@@ -1,9 +1,26 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vitest/config';
+import { loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const rootDir = path.resolve(__dirname);
+  const env = loadEnv(mode, rootDir, '');
+  const apiProxyTarget = (
+    env.VITE_API_PROXY_TARGET ||
+    env.VITE_API_BASE_URL ||
+    'http://127.0.0.1:8000'
+  ).replace(/\/$/, '');
+
+  const devProxy: Record<string, { target: string; changeOrigin: boolean }> = {
+    '/api': { target: apiProxyTarget, changeOrigin: true },
+    '/health': { target: apiProxyTarget, changeOrigin: true },
+    '/static': { target: apiProxyTarget, changeOrigin: true },
+    '/uploads': { target: apiProxyTarget, changeOrigin: true },
+  };
+
+  return {
   plugins: [react() as any],
   resolve: {
     extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
@@ -88,28 +105,15 @@ export default defineConfig({
   server: {
     port: 5173,
     open: true,
-    proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:8000',
-        changeOrigin: true,
-      },
-      '/health': {
-        target: 'http://127.0.0.1:8000',
-        changeOrigin: true,
-      },
-      '/static': {
-        target: 'http://127.0.0.1:8000',
-        changeOrigin: true,
-      },
-      '/uploads': {
-        target: 'http://127.0.0.1:8000',
-        changeOrigin: true,
-      },
-    },
+    proxy: devProxy,
+  },
+  preview: {
+    proxy: devProxy,
   },
   test: {
     environment: 'jsdom',
     setupFiles: './src/__tests__/setup.ts',
     globals: true,
   },
+};
 });

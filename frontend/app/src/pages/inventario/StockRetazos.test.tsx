@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StockRetazos } from './StockRetazos';
@@ -22,7 +22,7 @@ const setupFetchMock = () => {
             // First load empty, after creation return one
             const hasPost = calls.some(c => String(c.url).includes('/api/inventario/retazos?material_id='));
             const rows = hasPost
-                ? [{ id: 'r1', material_id: 'm1', ancho: 50, largo: 40, estado: 'disponible', en_venta: false, precio: null }]
+                ? [{ id: 'r1', material_id: 'm1', ancho: 400, largo: 500, estado: 'disponible', en_venta: false, precio: null }]
                 : [];
             return {
                 ok: true,
@@ -48,9 +48,26 @@ const setupFetchMock = () => {
     return calls;
 };
 
+function mockCanvas2dContext(): Partial<CanvasRenderingContext2D> {
+    const noop = () => {};
+    return {
+        fillRect: noop,
+        strokeRect: noop,
+        fillText: noop,
+        setLineDash: noop,
+    };
+}
+
 describe('StockRetazos', () => {
     beforeEach(() => {
         setupFetchMock();
+        vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() =>
+            mockCanvas2dContext() as CanvasRenderingContext2D
+        );
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
     });
 
     it('crea un retazo via dialog y actualiza inventario', async () => {
@@ -68,13 +85,13 @@ describe('StockRetazos', () => {
         await user.click(option);
 
         // Completar medidas y precio
-        const ancho = await screen.findByLabelText(/Ancho \(cm\)/i);
-        const largo = await screen.findByLabelText(/Largo \(cm\)/i);
+        const ancho = await screen.findByLabelText(/Ancho \(mm\)/i);
+        const largo = await screen.findByLabelText(/Largo \(mm\)/i);
         const precioM2 = await screen.findByLabelText(/Precio \(m²\)/i);
         await user.clear(ancho);
-        await user.type(ancho, '50');
+        await user.type(ancho, '400');
         await user.clear(largo);
-        await user.type(largo, '40');
+        await user.type(largo, '500');
         await user.clear(precioM2);
         await user.type(precioM2, '5000');
 

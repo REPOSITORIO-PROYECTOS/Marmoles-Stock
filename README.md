@@ -73,6 +73,7 @@ git push -u origin main
 - Requiere PostgreSQL en marcha (`docker compose up -d db` o `.\scripts\bootstrap_db.ps1`).
 - Simulación: `cd backend` → `.\.venv\Scripts\python scripts/import_control_inventario_xlsx.py --dry-run`
 - Carga real (crea materiales si no existen): `.\.venv\Scripts\python scripts/import_control_inventario_xlsx.py --create-materials`
+- En la app: **Inventario → Gestión**, expandí un material y cada **lote**: verás la tabla de **placas** con medidas en **mm**, **m²** por placa y **bloque** (ubicación).
 - La hoja **RECORTES** (piezas en L con varios tramos) no se importa automáticamente; son geometrías compuestas.
 
 ## Scripts útiles
