@@ -70,14 +70,13 @@ services:
     container_name: marmoles_frontend
     restart: always
     ports:
-      - "127.0.0.1:5120:5120"
-    environment:
-      VITE_API_BASE_URL: http://localhost:8020
+      # nginx escucha en :80 dentro del contenedor; el JS usa mismo origen + /api (proxeado)
+      - "127.0.0.1:5120:80"
     depends_on:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5120"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/"]
       interval: 30s
       timeout: 10s
       retries: 3

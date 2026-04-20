@@ -48,13 +48,13 @@ git push -u origin main
 - `cd frontend/app`
 - `npm install`
 - `npm run dev`
-- Abrir `http://localhost:3000/`
-- Proxy de desarrollo a la API configurado en `frontend/app/vite.config.ts:61–69` hacia `http://127.0.0.1:8000`.
+- Abrir `http://localhost:5173/` (Vite).
+- En dev, las rutas `/api`, `/health`, `/static`, `/uploads` se proxean vía `frontend/app/vite.config.ts` (por defecto a `http://127.0.0.1:8000`; ver `.env.example`).
 
 ### Variables de entorno (frontend)
-- Archivo `.env` en `frontend/app` (opcional):
-  - `VITE_API_BASE_URL=http://127.0.0.1:8000`
-- Si no se define, el frontend usa `http://127.0.0.1:8000` en modo dev y `https://marmoles.sistemataup.online` en producción (`frontend/app/src/config.ts:4–7`).
+- Archivo `.env.local` en `frontend/app` (opcional): `VITE_API_BASE_URL` o `VITE_API_PROXY_TARGET` si el backend no está en `:8000` (p. ej. Docker en `:8020`). Ver `frontend/app/.env.example`.
+- **Docker Compose (producción local):** el contenedor del frontend usa **nginx**: el JS se sirve en `http://127.0.0.1:5120` y las peticiones van al **mismo origen** (`window.location.origin`); nginx reenvía `/api/` al servicio `backend:8000`. No hace falta `VITE_API_BASE_URL` en el build.
+- **Build estático sin nginx** (poco habitual): definir `VITE_API_BASE_URL` en tiempo de build apuntando al API público.
 
 ### Modo local con SQLite (sin Postgres)
 - Base usada en la prueba: `marmoles/dev_inventory_e2e.db` (copia de `dev_inventory.db` + import Excel).
@@ -114,7 +114,7 @@ docker logs marmoles_db
 
 ## Estructura rápida
 - API: `backend/app/main.py:14` define la aplicación FastAPI y CORS.
-- Frontend: `frontend/app/vite.config.ts:58` define puerto `3000` y proxy.
+- Frontend dev: `frontend/app/vite.config.ts` puerto `5173` y proxy al API.
 - Router (sandbox raíz): `src/App.tsx:1–11` con `react-router-dom`.
 
 ## Notas
