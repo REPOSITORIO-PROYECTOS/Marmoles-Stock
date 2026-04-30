@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { get, post, put, del } from '../../api';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -51,6 +51,13 @@ export function StockRetazos() {
   const [lotesDisponibles, setLotesDisponibles] = useState<Array<{ id: string; codigo_lote: string }>>([]);
   const [nuevoPlanoRectNorm, setNuevoPlanoRectNorm] = useState<PlanoRectNorm | null>(null);
   const [editPlanoRectNorm, setEditPlanoRectNorm] = useState<PlanoRectNorm | null>(null);
+  const [modoFormaNuevo, setModoFormaNuevo] = useState<'rect' | 'poly'>('rect');
+  const [polyPoints, setPolyPoints] = useState<Array<{ x: number; y: number }>>([]);
+  const [polyClosed, setPolyClosed] = useState(false);
+  const [polyAreaMm2, setPolyAreaMm2] = useState(0);
+  const [polyBbox, setPolyBbox] = useState<{ width: number; height: number } | null>(null);
+  const [polySnapMode, setPolySnapMode] = useState(true);
+  const polyCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const normalizarNombre = (s: string) => (s || '').trim().toLowerCase();
 
@@ -237,27 +244,185 @@ export function StockRetazos() {
   const anchoNum = parseFloat(nuevoAncho) || 0;
   const largoNum = parseFloat(nuevoLargo) || 0;
   const precioM2Num = parseFloat(precioPlanchaM2) || 0;
-  const areaNuevoRetazoMm2 = Math.max(0, Math.round(anchoNum * largoNum));
+  const rectAreaNuevoRetazoMm2 = Math.max(0, Math.round(anchoNum * largoNum));
+  const areaNuevoRetazoMm2 = modoFormaNuevo === 'poly' && polyClosed && polyPoints.length >= 3 && polyAreaMm2 > 0
+    ? Math.max(0, Math.round(polyAreaMm2))
+    : rectAreaNuevoRetazoMm2;
   const m2NuevoRetazo = areaNuevoRetazoMm2 / 1_000_000;
   const precioEstimadoNuevoRetazo = Math.round(precioM2Num * m2NuevoRetazo);
 
-  const buildGeometriaNuevo = (l: number, w: number): string | undefined => {
+  const polygonAreaMm2 = (pts: Array<{ x: number; y: number }>): number => {
+    if (pts.length < 3) return 0;
+    let sum = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const j = (i + 1) % pts.length;
+      sum += pts[i].x * pts[j].y - pts[j].x * pts[i].y;
+    }
+    return Math.abs(sum) / 2;
+  };
+
+  const polygonBboxMm = (pts: Array<{ x: number; y: number }>): { width: number; height: number } | null => {
+    if (pts.length === 0) return null;
+    let minX = pts[0].x;
+    let maxX = pts[0].x;
+    let minY = pts[0].y;
+    let maxY = pts[0].y;
+    for (const p of pts) {
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    }
+    return { width: maxX - minX, height: maxY - minY };
+  };
+
+  const polygonSidesMm = (pts: Array<{ x: number; y: number }>): number[] => {
+    if (pts.length < 2) return [];
+    const out: number[] = [];
+    for (let i = 0; i < pts.length; i++) {
+      const j = (i + 1) % pts.length;
+      const dx = pts[j].x - pts[i].x;
+      const dy = pts[j].y - pts[i].y;
+      out.push(Math.sqrt(dx * dx + dy * dy));
+    }
+    return out;
+  };
+
+  const buildGeometriaNuevo = (): string | undefined => {
+    const l = Math.round(largoNum);
+    const w = Math.round(anchoNum);
     if (l <= 0 || w <= 0) return undefined;
+
+    if (modoFormaNuevo === 'poly' && polyClosed && polyPoints.length >= 3 && polyBbox && polyAreaMm2 > 0) {
+      const lados = polygonSidesMm(polyPoints).map(v => Math.round(v));
+      const payload: Record<string, unknown> = {
+        v: 1,
+        tipo: 'polygon',
+        shapeType: 'polygon',
+        creado_en: new Date().toISOString(),
+        area_mm2: Math.round(polyAreaMm2),
+        bbox: { width: Math.round(polyBbox.width), height: Math.round(polyBbox.height) },
+        points: polyPoints.map(p => ({ x: Math.round(p.x), y: Math.round(p.y) })),
+        lados,
+        largo_mm: l,
+        ancho_mm: w,
+      };
+      return JSON.stringify(payload);
+    }
+
     const payload: Record<string, unknown> = {
       v: 1,
       tipo: 'rect',
-      largo_mm: Math.round(l),
-      ancho_mm: Math.round(w),
+      shapeType: 'rect',
+      largo_mm: l,
+      ancho_mm: w,
       creado_en: new Date().toISOString(),
     };
     if (nuevoPlanoRectNorm) payload.rect_norm = nuevoPlanoRectNorm;
     return JSON.stringify(payload);
   };
 
+  useEffect(() => {
+    if (!isAddDialogOpen || modoFormaNuevo !== 'poly') return;
+    const canvas = polyCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (polyPoints.length === 0) return;
+
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(polyPoints[0].x, polyPoints[0].y);
+      for (let i = 1; i < polyPoints.length; i++) ctx.lineTo(polyPoints[i].x, polyPoints[i].y);
+      if (polyClosed) ctx.closePath();
+      ctx.stroke();
+
+      ctx.fillStyle = '#0ea5e9';
+      for (const p of polyPoints) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      if (polyPoints.length > 1) {
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#111827';
+        const maxIdx = polyClosed ? polyPoints.length : polyPoints.length - 1;
+        for (let i = 0; i < maxIdx; i++) {
+          const p1 = polyPoints[i];
+          const p2 = polyPoints[(i + 1) % polyPoints.length];
+          const midX = (p1.x + p2.x) / 2;
+          const midY = (p1.y + p2.y) / 2;
+          const dx = p2.x - p1.x;
+          const dy = p2.y - p1.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          ctx.fillText(`${dist.toFixed(0)} mm`, midX + 6, midY - 6);
+        }
+      }
+    };
+
+    draw();
+  }, [isAddDialogOpen, modoFormaNuevo, polyClosed, polyPoints]);
+
+  useEffect(() => {
+    if (!isAddDialogOpen || modoFormaNuevo !== 'poly') return;
+    const canvas = polyCanvasRef.current;
+    if (!canvas) return;
+    const handleCanvasClick = (e: MouseEvent) => {
+      if (polyClosed) return;
+      const rect = canvas.getBoundingClientRect();
+      const sx = rect.width > 0 ? canvas.width / rect.width : 1;
+      const sy = rect.height > 0 ? canvas.height / rect.height : 1;
+      let x = (e.clientX - rect.left) * sx;
+      let y = (e.clientY - rect.top) * sy;
+
+      if (polySnapMode && polyPoints.length > 0) {
+        const last = polyPoints[polyPoints.length - 1];
+        const dx = x - last.x;
+        const dy = y - last.y;
+        if (Math.abs(dx) > Math.abs(dy)) {
+          y = last.y;
+        } else {
+          x = last.x;
+        }
+      }
+
+      console.log('Click:', { x, y, snapMode: polySnapMode });
+      setPolyPoints(prev => [...prev, { x, y }]);
+    };
+
+    canvas.onclick = null;
+    canvas.onclick = handleCanvasClick as any;
+    return () => {
+      canvas.onclick = null;
+    };
+  }, [isAddDialogOpen, modoFormaNuevo, polyClosed, polySnapMode, polyPoints]);
+
+  useEffect(() => {
+    if (modoFormaNuevo !== 'poly') return;
+    if (!polyClosed || polyPoints.length < 3) {
+      setPolyAreaMm2(0);
+      setPolyBbox(null);
+      return;
+    }
+    const area = polygonAreaMm2(polyPoints);
+    const bbox = polygonBboxMm(polyPoints);
+    setPolyAreaMm2(area);
+    setPolyBbox(bbox);
+    if (bbox) {
+      setNuevoLargo(String(Math.max(0, Math.round(bbox.width))));
+      setNuevoAncho(String(Math.max(0, Math.round(bbox.height))));
+    }
+  }, [modoFormaNuevo, polyClosed, polyPoints]);
+
   const handleCrearNuevoRetazo = async () => {
     if (!nuevoMaterialId || anchoNum <= 0 || largoNum <= 0 || precioM2Num <= 0) return;
     try {
-      const geo = buildGeometriaNuevo(largoNum, anchoNum);
+      const geo = buildGeometriaNuevo();
       await post('/api/inventario/retazos', {
         material_id: nuevoMaterialId,
         lote_id: nuevoLoteId || undefined,
@@ -277,6 +442,12 @@ export function StockRetazos() {
       setPrecioPlanchaM2('');
       setLotesDisponibles([]);
       setNuevoPlanoRectNorm(null);
+      setModoFormaNuevo('rect');
+      setPolyPoints([]);
+      setPolyClosed(false);
+      setPolyAreaMm2(0);
+      setPolyBbox(null);
+      setPolySnapMode(true);
     } catch { }
   };
 
@@ -517,13 +688,42 @@ export function StockRetazos() {
       {/* Dialog Añadir Retazo */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
         setIsAddDialogOpen(open);
-        if (!open) setNuevoPlanoRectNorm(null);
+        if (!open) {
+          setNuevoPlanoRectNorm(null);
+          setModoFormaNuevo('rect');
+          setPolyPoints([]);
+          setPolyClosed(false);
+          setPolyAreaMm2(0);
+          setPolyBbox(null);
+          setPolySnapMode(true);
+        }
       }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Añadir Retazo</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant={modoFormaNuevo === 'rect' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setModoFormaNuevo('rect')}
+              >
+                Rectángulo
+              </Button>
+              <Button
+                type="button"
+                variant={modoFormaNuevo === 'poly' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setModoFormaNuevo('poly');
+                  setPolySnapMode(true);
+                }}
+              >
+                Forma libre
+              </Button>
+            </div>
             <div>
               <Label htmlFor="material-nuevo" className="text-sm">Material</Label>
               <Select value={nuevoMaterialId} onValueChange={async (v) => {
@@ -588,15 +788,87 @@ export function StockRetazos() {
               </div>
             </div>
 
-            <RetazoMicroPlanoCanvas
-              largoMm={Math.max(50, Math.round(largoNum) || 800)}
-              anchoMm={Math.max(50, Math.round(anchoNum) || 400)}
-              onMedidasChange={(l, w) => {
-                setNuevoLargo(String(l));
-                setNuevoAncho(String(w));
-              }}
-              onPlanoChange={(d) => setNuevoPlanoRectNorm(d?.rect_norm ?? null)}
-            />
+            {modoFormaNuevo === 'rect' ? (
+              <RetazoMicroPlanoCanvas
+                largoMm={Math.max(50, Math.round(largoNum) || 800)}
+                anchoMm={Math.max(50, Math.round(anchoNum) || 400)}
+                onMedidasChange={(l, w) => {
+                  setNuevoLargo(String(l));
+                  setNuevoAncho(String(w));
+                }}
+                onPlanoChange={(d) => setNuevoPlanoRectNorm(d?.rect_norm ?? null)}
+              />
+            ) : (
+              <div className="space-y-3">
+                <canvas
+                  ref={polyCanvasRef}
+                  width={420}
+                  height={260}
+                  className="w-full border border-gray-200 rounded-lg bg-white"
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPolySnapMode(v => {
+                      const next = !v;
+                      console.log('Snap:', next);
+                      return next;
+                    })}
+                  >
+                    {polySnapMode ? 'Modo: Recto' : 'Modo: Libre'}
+                  </Button>
+                  <div className="text-xs text-gray-600">
+                    {polySnapMode ? 'Modo actual: Recto' : 'Modo actual: Libre'}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setPolyClosed(false);
+                      setPolyPoints(prev => prev.slice(0, -1));
+                    }}
+                    disabled={polyPoints.length === 0}
+                  >
+                    Deshacer
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (polyPoints.length < 3) {
+                        alert('Mínimo 3 puntos');
+                        return;
+                      }
+                      setPolyClosed(true);
+                    }}
+                    disabled={polyClosed || polyPoints.length < 3}
+                  >
+                    Cerrar forma
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setPolyPoints([]);
+                      setPolyClosed(false);
+                      setPolyAreaMm2(0);
+                      setPolyBbox(null);
+                      setPolySnapMode(true);
+                    }}
+                    disabled={polyPoints.length === 0 && !polyClosed}
+                  >
+                    Reset
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>

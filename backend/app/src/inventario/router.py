@@ -433,6 +433,15 @@ def actualizar_placa(placaId: str, payload: dict | None = None, estado: str | No
 @router.post("/api/inventario/retazos")
 def crear_retazo(payload: RetazoCreate, db: Session = Depends(get_db)):
     area_mm2 = float(payload.ancho * payload.largo)
+    if payload.geometria_json:
+        try:
+            import json
+            geo = json.loads(payload.geometria_json)
+            geo_area = geo.get("area_mm2") if isinstance(geo, dict) else None
+            if geo_area is not None and float(geo_area) > 0:
+                area_mm2 = float(geo_area)
+        except Exception:
+            pass
     r = RetazoModel(
         material_id=payload.material_id,
         ancho=payload.ancho,
