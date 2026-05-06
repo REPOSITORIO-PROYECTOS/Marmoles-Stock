@@ -170,14 +170,30 @@ export function StockRetazos() {
       try {
         const l = Math.round(retazoSeleccionado.largo);
         const w = Math.round(retazoSeleccionado.ancho);
-        const geoPayload: Record<string, unknown> = {
+        let geoPayload: Record<string, unknown> = {
           v: 1,
           tipo: 'rect',
           largo_mm: l,
           ancho_mm: w,
           actualizado_en: new Date().toISOString(),
         };
-        if (editPlanoRectNorm) geoPayload.rect_norm = editPlanoRectNorm;
+        if (retazoSeleccionado.geometriaJson) {
+          try {
+            const existing = JSON.parse(retazoSeleccionado.geometriaJson) as Record<string, unknown>;
+            const tipo = String(existing.tipo || existing.shapeType || '');
+            if (tipo === 'polygon') {
+              geoPayload = {
+                ...existing,
+                largo_mm: l,
+                ancho_mm: w,
+                actualizado_en: new Date().toISOString(),
+              };
+            }
+          } catch { /* ignore */ }
+        }
+        if ((geoPayload.tipo === 'rect' || geoPayload.shapeType === 'rect') && editPlanoRectNorm) {
+          geoPayload.rect_norm = editPlanoRectNorm;
+        }
         await put(`/api/inventario/retazos/${retazoSeleccionado.id}`, {
           ancho: w,
           largo: l,
@@ -346,6 +362,13 @@ export function StockRetazos() {
         ctx.beginPath();
         ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
         ctx.fill();
+      }
+
+      ctx.font = '12px Arial';
+      ctx.fillStyle = '#1f2937';
+      for (let i = 0; i < polyPoints.length; i++) {
+        const p = polyPoints[i];
+        ctx.fillText(`P${i + 1}`, p.x + 8, p.y + 4);
       }
 
       if (polyPoints.length > 1) {
@@ -866,6 +889,50 @@ export function StockRetazos() {
                   >
                     Reset
                   </Button>
+                </div>
+                <div className="border rounded-md bg-gray-50 p-2">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-semibold text-gray-700">Puntos</div>
+                    <div className="text-[11px] text-gray-600">
+                      {polyPoints.length} {polyPoints.length === 1 ? 'punto' : 'puntos'}{polyClosed ? ' (cerrado)' : ''}
+                    </div>
+                  </div>
+                  <div className="mt-2 max-h-40 overflow-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-gray-600">
+                          <th className="text-left font-medium py-1 pr-2">Ref</th>
+                          <th className="text-right font-medium py-1 pr-2">X (mm)</th>
+                          <th className="text-right font-medium py-1 pr-2">Y (mm)</th>
+                          <th className="text-right font-medium py-1">Lado → sig (mm)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {polyPoints.length === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="py-2 text-[11px] text-gray-600">
+                              Hacé click en el canvas para agregar puntos.
+                            </td>
+                          </tr>
+                        ) : (
+                          polyPoints.map((p, i) => {
+                            const hasNext = polyClosed ? polyPoints.length >= 2 : i < polyPoints.length - 1;
+                            const nextIdx = (i + 1) % polyPoints.length;
+                            const next = hasNext ? polyPoints[nextIdx] : null;
+                            const dist = next ? Math.sqrt((next.x - p.x) ** 2 + (next.y - p.y) ** 2) : null;
+                            return (
+                              <tr key={`${p.x}-${p.y}-${i}`} className="border-t border-gray-200">
+                                <td className="py-1 pr-2 font-semibold text-gray-900">{`P${i + 1}`}</td>
+                                <td className="py-1 pr-2 text-right text-gray-900">{Math.round(p.x)}</td>
+                                <td className="py-1 pr-2 text-right text-gray-900">{Math.round(p.y)}</td>
+                                <td className="py-1 text-right text-gray-900">{dist != null ? Math.round(dist) : '-'}</td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}
