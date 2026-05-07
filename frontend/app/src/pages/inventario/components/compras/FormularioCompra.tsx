@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../../components/ui/card';
 import { Button } from '../../../../components/ui/button';
 import { Input } from '../../../../components/ui/input';
@@ -90,8 +90,8 @@ export function FormularioCompra({
             </CardHeader>
             <CardContent className="space-y-6">
                 {/* SELECTOR DE TIPO: MATERIAL O PRODUCTO */}
-                <div className="p-4 bg-cyan-50 rounded-lg border border-cyan-200">
-                    <Label className="block mb-3 font-semibold text-cyan-900">Tipo de Compra</Label>
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <Label className="block mb-3 font-semibold text-blue-900">Tipo de Compra</Label>
                     <div className="flex gap-2">
                         <Button
                             variant={tipoCompra === 'material' ? 'default' : 'outline'}
@@ -343,7 +343,7 @@ export function FormularioCompra({
                                                                     form.lote === lote.codigo_lote ? "opacity-100" : "opacity-0"
                                                                 )}
                                                             />
-                                                            {lote.codigo_lote} ({lote.largo_m}×{lote.ancho_m}m)
+                                                            {lote.codigo_lote} ({lote.ancho_m}×{lote.largo_m}m)
                                                         </CommandItem>
                                                     ))}
                                                 </CommandGroup>
@@ -377,9 +377,9 @@ export function FormularioCompra({
                                         </div>
 
                                         <div>
-                                            <Label htmlFor="alto" className="text-xs">Alto (m)</Label>
+                                            <Label htmlFor="largo" className="text-xs">Largo (m)</Label>
                                             <Input
-                                                id="alto"
+                                                id="largo"
                                                 type="number"
                                                 step="0.01"
                                                 min="0"
@@ -431,7 +431,7 @@ export function FormularioCompra({
                                 </div>
 
                                 {/* PASO 5: COSTO - SELECTOR DE MODO */}
-                                <div className="space-y-3 p-4 bg-cyan-50 rounded-lg border border-cyan-200">
+                                <div className="space-y-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
                                     <Label className="font-semibold flex gap-2">
                                         <span>5. Costo de Compra</span>
                                         <span className="text-red-500">*</span>
@@ -709,15 +709,15 @@ export function FormularioCompra({
                                             <span className="text-slate-600">Área por Placa:</span>
                                             <span className="font-bold">{areaM2.toFixed(2)} m²</span>
                                         </div>
-                                        <div className="flex justify-between bg-cyan-100 p-2 rounded font-bold">
+                                        <div className="flex justify-between bg-blue-100 p-2 rounded font-bold">
                                             <span className="text-slate-700">Total m² (Placas × Área):</span>
-                                            <span className="text-cyan-600">{(areaM2 * form.cantidad_placas).toFixed(2)} m²</span>
+                                            <span className="text-blue-600">{(areaM2 * form.cantidad_placas).toFixed(2)} m²</span>
                                         </div>
-                                        <div className="flex justify-between text-cyan-600 font-bold border-t pt-2">
+                                        <div className="flex justify-between text-blue-600 font-bold border-t pt-2">
                                             <span>Costo/m²:</span>
                                             <span>${form.costo_m2.toFixed(2)}</span>
                                         </div>
-                                        <div className="flex justify-between text-cyan-600 font-bold">
+                                        <div className="flex justify-between text-blue-600 font-bold">
                                             <span>Total a Pagar:</span>
                                             <span>${(form.costo_m2 * areaM2 * form.cantidad_placas).toFixed(2)}</span>
                                         </div>
@@ -787,7 +787,7 @@ export function FormularioCompra({
                         </div>
 
                         {productoSeleccionado && (
-                            <div className="p-4 bg-cyan-50 rounded-lg border border-cyan-200">
+                            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                                 <p className="text-sm text-muted-foreground mb-3">📦 Resumen:</p>
                                 <div className="space-y-2 text-sm">
                                     <div className="flex justify-between">
@@ -808,7 +808,7 @@ export function FormularioCompra({
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-slate-600">Total Placas:</span>
-                                        <span className="font-bold text-cyan-600">{form.cantidad_producto * form.cantidad_placas}</span>
+                                        <span className="font-bold text-blue-600">{form.cantidad_producto * form.cantidad_placas}</span>
                                     </div>
                                     <div className="flex justify-between border-t pt-2 text-primary font-bold">
                                         <span>Total a Pagar:</span>

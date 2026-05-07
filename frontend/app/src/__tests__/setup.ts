@@ -33,7 +33,11 @@ if (!(globalThis as any).window.open) {
   })) as any;
 }
 
-if (typeof window !== 'undefined') {
+if (
+  typeof window !== 'undefined' &&
+  typeof HTMLElement !== 'undefined' &&
+  HTMLElement.prototype
+) {
   if (!HTMLElement.prototype.hasPointerCapture) {
     HTMLElement.prototype.hasPointerCapture = () => false;
   }

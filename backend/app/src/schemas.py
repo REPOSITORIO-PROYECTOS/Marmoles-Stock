@@ -13,6 +13,11 @@ class UsuarioCreate(BaseModel):
     rol: Optional[str] = "ventas"
     nombre_completo: Optional[str] = None
 
+
+class CambioPasswordPayload(BaseModel):
+    password_actual: str
+    password_nueva: str
+
 # CRM
 class LeadCreate(BaseModel):
     nombre: str

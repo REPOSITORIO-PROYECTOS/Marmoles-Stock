@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 import logging
 import os
 from sqlalchemy import inspect, text
+from sqlalchemy.orm import Session
 
 from .db import engine, SessionLocal
 from .models import Base, User
@@ -51,15 +52,29 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"message": "Internal Server Error", "detail": str(exc)},
     )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+def _cors_allow_origins() -> list[str]:
+    """Orígenes permitidos: dev local + PUBLIC_ORIGIN + CORS_EXTRA_ORIGINS (coma). Sin acoplar otros despliegues."""
+    origins: list[str] = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "https://marmoles.sistemataup.online",
-    ],
+    ]
+    public_origin = os.getenv("PUBLIC_ORIGIN", "").strip()
+    if public_origin:
+        origins.append(public_origin)
+    extra = os.getenv("CORS_EXTRA_ORIGINS", "").strip()
+    if extra:
+        for part in extra.split(","):
+            o = part.strip()
+            if o:
+                origins.append(o)
+    return origins
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_allow_origins(),
     allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
@@ -251,17 +266,27 @@ def _ensure_crm_columns():
     except Exception as e:
         logger.error(f"Error ensuring CRM columns: {e}")
 
-def _ensure_bootstrap():
+def _ensure_bootstrap() -> None:
     Base.metadata.create_all(bind=engine)
     _ensure_crm_columns()
-    db = None
+    admin_username = (os.getenv("ADMIN_USERNAME") or "admin").strip() or "admin"
+    admin_password = os.getenv("ADMIN_PASSWORD") or "admin"
+    admin_email = (os.getenv("ADMIN_EMAIL") or "admin@example.com").strip() or "admin@example.com"
+    db: Session | None = None
     try:
         db = SessionLocal()
-        admin = db.query(User).filter(User.username == "admin").first()
+        admin = db.query(User).filter(User.username == admin_username).first()
         if not admin:
             salt = os.urandom(16).hex()
-            pwd = hash_password("admin", salt)
-            admin = User(username="admin", email="admin@example.com", password_hash=pwd, password_salt=salt, role="admin", active=True)
+            pwd = hash_password(admin_password, salt)
+            admin = User(
+                username=admin_username,
+                email=admin_email,
+                password_hash=pwd,
+                password_salt=salt,
+                role="admin",
+                active=True,
+            )
             db.add(admin)
             db.commit()
     finally:

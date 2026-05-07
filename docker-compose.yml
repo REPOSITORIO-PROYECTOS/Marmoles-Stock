@@ -1,19 +1,21 @@
+name: dimarmi
+
 services:
   db:
     image: postgres:15-alpine
-    container_name: marmoles_db
+    container_name: dimarmi_db
     environment:
-      POSTGRES_DB: marmoles_db
-      POSTGRES_USER: marmoles_user
-      POSTGRES_PASSWORD: marmoles_password
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_INITDB_ARGS: '-E UTF8'
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${DB_PORT}:5432"
     volumes:
-      - marmoles_pgdata:/var/lib/postgresql/data
+      - dimarmi_pgdata:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U marmoles_user"]
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\""]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -32,22 +34,23 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: marmoles_backend
+    container_name: dimarmi_backend
     restart: always
     environment:
-      DATABASE_URL: postgresql+psycopg2://marmoles_user:marmoles_password@marmoles_db:5432/marmoles_db
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@dimarmi_db:5432/${POSTGRES_DB}
       PYTHONUNBUFFERED: 1
-      ENABLE_COMMERCIAL_MODULES: "false"
+      ENABLE_COMMERCIAL_MODULES: ${ENABLE_COMMERCIAL_MODULES:-false}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN}
+      CORS_EXTRA_ORIGINS: ${CORS_EXTRA_ORIGINS:-}
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
     ports:
-      - "127.0.0.1:8020:8000"
-    volumes:
-      - ./backend:/app
-      - /app/__pycache__
+      - "127.0.0.1:${BACKEND_PORT}:8000"
     depends_on:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -62,16 +65,16 @@ services:
           memory: 512M
     networks:
       - default
+      - cerebro
 
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
-    container_name: marmoles_frontend
+    container_name: dimarmi_frontend
     restart: always
     ports:
-      # nginx escucha en :80 dentro del contenedor; el JS usa mismo origen + /api (proxeado)
-      - "127.0.0.1:5120:80"
+      - "127.0.0.1:${FRONTEND_PORT}:80"
     depends_on:
       backend:
         condition: service_healthy
@@ -91,11 +94,16 @@ services:
           memory: 256M
     networks:
       - default
+      - cerebro
 
 volumes:
-  marmoles_pgdata:
-    driver: local
+  dimarmi_pgdata:
+    external: true
+    name: dimarmi_postgres_data
 
 networks:
   default:
     driver: bridge
+  cerebro:
+    external: true
+    name: cerebro_default

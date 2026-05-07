@@ -4,14 +4,19 @@ async function apiRequest<T>(path: string, options?: RequestInit): Promise<T> {
   const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
   const url = `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
   console.log(`API Request: ${options?.method || 'GET'} ${url}`);
+  const isLogin = path.includes("/auth/login");
+  const token =
+    typeof window !== "undefined" && !isLogin
+      ? localStorage.getItem("token")
+      : null;
+  const attachAuth =
+    !!token && token !== "null" && token !== "undefined";
   const doFetch = async () => fetch(url, {
     ...options,
     headers: {
       "Content-Type": "application/json",
       ...(options?.headers ?? {}),
-      ...(typeof window !== "undefined" && localStorage.getItem("token") && localStorage.getItem("token") !== "null" && localStorage.getItem("token") !== "undefined"
-        ? { Authorization: `Bearer ${localStorage.getItem("token")}` }
-        : {}),
+      ...(attachAuth ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
   let res = await doFetch();

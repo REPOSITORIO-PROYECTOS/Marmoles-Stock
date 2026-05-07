@@ -38,7 +38,16 @@ from app.models import Lote, Material, MovimientoInventario, Placa, Retazo  # no
 
 
 def _default_xlsx_path() -> Path:
-    return Path(__file__).resolve().parents[3] / "Control_Inventario_Marmoleria 2026.xlsx"
+    """Repo: sube directorios hasta encontrar el .xlsx. En imagen Docker suele no existir: usar --file."""
+    here = Path(__file__).resolve()
+    name = "Control_Inventario_Marmoleria 2026.xlsx"
+    for i in range(0, len(here.parents)):
+        cand = here.parents[i] / name
+        if cand.is_file():
+            return cand
+    raise SystemExit(
+        "No se encontró el .xlsx por defecto; montá el archivo y usá --file /ruta/dentro/del/contenedor"
+    )
 
 
 def _default_sqlite_path() -> Path:
@@ -463,7 +472,7 @@ def _import_remanentes(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Importar inventario desde Excel de control")
-    parser.add_argument("--file", type=Path, default=_default_xlsx_path(), help="Ruta al .xlsx")
+    parser.add_argument("--file", type=Path, default=None, help="Ruta al .xlsx (en Docker suele ser obligatorio)")
     parser.add_argument("--sheet-bloques", default="Control de Bloques", help="Hoja placas/bloques")
     parser.add_argument("--sheet-remanentes", default="Inventario Remanentes", help="Hoja retazos")
     parser.add_argument("--dry-run", action="store_true", help="Solo leer Excel, no escribir BD")
@@ -476,6 +485,8 @@ def main() -> None:
     parser.add_argument("--no-bloques", action="store_true", help="No importar hoja Control de Bloques")
     parser.add_argument("--no-remanentes", action="store_true", help="No importar hoja Inventario Remanentes")
     args = parser.parse_args()
+    if args.file is None:
+        args.file = _default_xlsx_path()
 
     if not args.file.is_file():
         raise SystemExit(f"No existe el archivo: {args.file}")

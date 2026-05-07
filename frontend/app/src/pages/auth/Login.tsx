@@ -28,12 +28,12 @@ export function Login({ onLogin }: Props) {
       setLoading(true);
       const resp = await post<{ token: string }>("/api/auth/login", {
         usuario: usuario.trim(),
-        password: password.trim(),
+        password,
       });
       if (resp && (resp as any).token) {
         localStorage.setItem("token", (resp as any).token);
         onLogin();
-        navigate("/inventario/dashboard", { replace: true });
+        navigate("/produccion/taller", { replace: true });
         return;
       }
       toast.error("Credenciales inválidas");
@@ -62,7 +62,7 @@ export function Login({ onLogin }: Props) {
             </svg>
           </div>
           <div className="text-center">
-            <div className="text-lg font-semibold leading-tight">Mundo di Marmi</div>
+            <div className="text-lg font-semibold leading-tight">JAVIER FLORES MÁRMOLES Y GRANITOS</div>
             <div className="text-sm text-muted-foreground">Sistema de Gestión</div>
           </div>
         </div>

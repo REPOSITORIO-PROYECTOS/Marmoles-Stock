@@ -1,26 +1,9 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vitest/config';
-import { loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
-export default defineConfig(({ mode }) => {
-  const rootDir = path.resolve(__dirname);
-  const env = loadEnv(mode, rootDir, '');
-  const apiProxyTarget = (
-    env.VITE_API_PROXY_TARGET ||
-    env.VITE_API_BASE_URL ||
-    'http://127.0.0.1:8000'
-  ).replace(/\/$/, '');
-
-  const devProxy: Record<string, { target: string; changeOrigin: boolean }> = {
-    '/api': { target: apiProxyTarget, changeOrigin: true },
-    '/health': { target: apiProxyTarget, changeOrigin: true },
-    '/static': { target: apiProxyTarget, changeOrigin: true },
-    '/uploads': { target: apiProxyTarget, changeOrigin: true },
-  };
-
-  return {
+export default defineConfig({
   plugins: [react() as any],
   resolve: {
     extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
@@ -103,17 +86,44 @@ export default defineConfig(({ mode }) => {
     minify: 'esbuild',
   },
   server: {
-    port: 5173,
+    port: 3000,
     open: true,
-    proxy: devProxy,
-  },
-  preview: {
-    proxy: devProxy,
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            const h = req.headers;
+            if (h['content-type']) {
+              proxyReq.setHeader('Content-Type', h['content-type'] as string);
+            }
+            if (h['content-length']) {
+              proxyReq.setHeader('Content-Length', h['content-length'] as string);
+            }
+            if (h.authorization) {
+              proxyReq.setHeader('Authorization', h.authorization as string);
+            }
+          });
+        },
+      },
+      '/health': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
+      '/static': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
+      '/uploads': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
+    },
   },
   test: {
     environment: 'jsdom',
     setupFiles: './src/__tests__/setup.ts',
     globals: true,
   },
-};
 });

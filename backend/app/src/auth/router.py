@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from ...db import get_db
 from ...models import User as UserModel
 from ...auth import create_session, verify_password, hash_password, get_current_user, require_roles, logout_session
-from ..schemas import LoginPayload, UsuarioCreate
+from ..schemas import CambioPasswordPayload, LoginPayload, UsuarioCreate
 import os
 import logging
 from datetime import datetime, timedelta
@@ -70,4 +70,28 @@ def usuario_me(current: UserModel = Depends(get_current_user)):
 def auth_logout(authorization: str = Header(None), db: Session = Depends(get_db), current: UserModel = Depends(get_current_user)):
     logger.info(f"🚪 LOGOUT - Usuario: '{current.username}' (id: {current.id})")
     logout_session(db, authorization)
+    return {"ok": True}
+
+
+@router.post("/api/auth/change-password")
+def auth_change_password(
+    payload: CambioPasswordPayload,
+    db: Session = Depends(get_db),
+    current: UserModel = Depends(get_current_user),
+):
+    if not payload.password_actual or not payload.password_nueva:
+        raise HTTPException(status_code=400, detail="Datos incompletos")
+    if len(payload.password_nueva) < 8:
+        raise HTTPException(status_code=400, detail="La nueva contraseña debe tener al menos 8 caracteres")
+    if payload.password_actual == payload.password_nueva:
+        raise HTTPException(status_code=400, detail="La nueva contraseña debe ser diferente a la actual")
+    if not verify_password(payload.password_actual, current.password_salt, current.password_hash):
+        raise HTTPException(status_code=401, detail="La contraseña actual es incorrecta")
+
+    salt = os.urandom(16).hex()
+    current.password_salt = salt
+    current.password_hash = hash_password(payload.password_nueva, salt)
+    db.add(current)
+    db.commit()
+    logger.info(f"🔐 PASSWORD CAMBIADA - Usuario: '{current.username}' (id: {current.id})")
     return {"ok": True}

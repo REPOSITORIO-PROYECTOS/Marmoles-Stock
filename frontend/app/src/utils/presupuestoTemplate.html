@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>__TITLE__</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 0;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* PDF_MARMOLES.svg: viewBox 595×842 = lamina A4. Va como FONDO de cada página, no en <img> recortado. */
+        body {
+            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #2a2a2a;
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        body.pdf-marmoles-doc {
+            background-color: #ffffff;
+            /* Un tile por 297mm de altura: cada “hoja” reutiliza el mismo A4. */
+            background-image: url("__ENCABEZADO_PDF_URL__");
+            background-size: 210mm 297mm;
+            background-repeat: repeat-y;
+            background-position: top center;
+        }
+
+        @media screen {
+            body.pdf-marmoles-doc {
+                max-width: 210mm;
+                min-height: 297mm;
+                margin: 0 auto;
+                box-shadow: 0 0 0 1px #e0e0e0;
+            }
+        }
+
+        /* Mosaico de <img> (impresión / export): el motor suele no imprimir background del body. */
+        .pdf-marmoles-tile-layer,
+        .pdf-marmoles-tile-layer img {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        :root {
+            /* Márgenes del contenido respecto al dibujo (misma proporción 95/110 en viewBox 842). */
+            --pdf-header-mm: calc(95 / 842 * 297mm);
+            --pdf-footer-mm: calc(110 / 842 * 297mm);
+            /* Aire extra entre el arte del encabezado y el texto (solicitado: ≥0,5 cm). */
+            --pdf-content-gap-below-header: 5mm;
+        }
+
+        .pdf-content-wrap {
+            position: relative;
+            z-index: 1;
+            padding: calc(var(--pdf-header-mm) + 3mm + var(--pdf-content-gap-below-header)) 8mm 0 8mm;
+        }
+
+        .pdf-main {
+            padding-bottom: calc(var(--pdf-footer-mm) + 4mm);
+        }
+
+        .linear-doc-info {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 14px;
+            font-size: 10.5px;
+            color: #333;
+            border-bottom: 1px solid #c8c8c8;
+            padding: 6px 0 8px;
+            margin-bottom: 10px;
+        }
+
+        .linear-doc-info .titulo-presup {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            color: #1a1a1a;
+            white-space: nowrap;
+            flex: 0 0 auto;
+            order: 0;
+        }
+
+        .linear-doc-info .doc-empresa-line {
+            flex: 1 1 200px;
+            min-width: 0;
+            line-height: 1.35;
+            order: 1;
+        }
+
+        .linear-doc-info .doc-meta-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px 14px;
+            flex: 2 1 260px;
+            justify-content: flex-end;
+            text-align: right;
+            order: 2;
+        }
+
+        .linear-doc-info .doc-inline-part {
+            white-space: nowrap;
+        }
+
+        .linear-doc-info .presupuesto-codigo {
+            font-weight: 700;
+            font-size: 11px;
+        }
+
+        .linear-doc-info .muted {
+            color: #666;
+            font-size: 10px;
+        }
+
+        .linear-cliente {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 4px 12px;
+            font-size: 10.5px;
+            color: #333;
+            border: none;
+            border-bottom: 1px solid #ddd;
+            border-radius: 0;
+            padding: 4px 0 8px;
+            margin-bottom: 10px;
+            background: transparent;
+        }
+
+        .linear-cliente .kv {
+            white-space: nowrap;
+            max-width: 100%;
+        }
+
+        .linear-cliente .kv--grow {
+            flex: 1 1 120px;
+            min-width: 0;
+            white-space: normal;
+        }
+
+        .linear-cliente .label {
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-right: 3px;
+        }
+
+        .cliente-extra {
+            font-size: 10.5px;
+            margin: 0 0 10px 0;
+            color: #444;
+        }
+
+        .cliente-extra .label {
+            font-weight: 600;
+            margin-right: 6px;
+        }
+
+        .link-ubicacion {
+            color: #444;
+            text-decoration: underline;
+            font-size: 11px;
+        }
+
+        .condiciones-comerciales {
+            margin: 10px 0 12px 0;
+            padding: 8px 10px;
+            background: #f7f7f8;
+            border: 1px solid #e4e4e4;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #333;
+            page-break-inside: avoid;
+        }
+
+        .condiciones-comerciales-line {
+            margin: 6px 0 0 0;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0 0 10px 0;
+            font-size: 13px;
+            line-height: 1.3;
+        }
+
+        .items-table thead th {
+            background-color: #f0f0f0;
+            color: #1a1a1a;
+            font-weight: 600;
+            text-align: left;
+            padding: 7px 10px;
+            border-bottom: 1px solid #ddd;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .items-table thead th.th-num {
+            text-align: right;
+        }
+
+        .items-table tbody td {
+            padding: 5px 8px;
+            border-bottom: 1px solid #eee;
+            vertical-align: middle;
+        }
+
+        .items-table .cell-desc-clean {
+            color: #1a1a1a;
+            font-size: 13px;
+        }
+
+        .items-table .cell-medida {
+            font-size: 13px;
+            color: #333;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+            max-width: 108px;
+        }
+
+        .items-table .cell-qty,
+        .items-table .cell-m2 {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .right {
+            text-align: right;
+        }
+
+        .totals-foot td {
+            padding: 5px 10px;
+            border-bottom: none;
+            background: #fafafa;
+        }
+
+        .totals-foot .total-line td {
+            background: #fff;
+            padding-top: 8px;
+        }
+
+        .totals-foot .total-discount .total-value {
+            color: #7a1f1f;
+        }
+
+        .totals-foot .total-iva-row td {
+            padding-top: 10px;
+        }
+
+        .totals-foot .total-label {
+            font-size: 13px;
+            color: #444;
+            font-weight: 500;
+        }
+
+        .totals-foot .total-value {
+            font-size: 13px;
+            color: #1a1a1a;
+            font-weight: 500;
+        }
+
+        .totals-foot .total-row td {
+            padding-top: 12px;
+            padding-bottom: 10px;
+            border-top: 1px solid #ddd;
+            background: #f7f7f8;
+        }
+
+        .totals-foot .total-final-label {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        .totals-foot .total-final {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        /* Mantener bloque de totales junto al final de la tabla al paginar. */
+        .items-table tfoot.totals-foot {
+            break-inside: avoid-page;
+            page-break-inside: avoid;
+        }
+
+        .plano-container {
+            border: 2px dashed #ccc;
+            padding: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 500px;
+        }
+
+        .plano-img {
+            max-width: 95%;
+            max-height: 800px;
+            object-fit: contain;
+        }
+
+        .legales {
+            font-size: 9.5px;
+            color: #666;
+            border-top: 1px solid #e8e8e8;
+            padding-top: 8px;
+            margin-top: 14px;
+            margin-bottom: 8px;
+            break-inside: avoid-page;
+            page-break-inside: avoid;
+        }
+
+        .legales ul {
+            padding-left: 15px;
+            margin: 5px 0;
+        }
+
+        .firma-box {
+            margin-top: 72px;
+            padding-top: 22px;
+            display: flex;
+            justify-content: space-between;
+            gap: 24px;
+            break-inside: avoid-page;
+            page-break-inside: avoid;
+        }
+
+        .firma {
+            border-top: 1px solid #bbb;
+            width: 200px;
+            text-align: center;
+            padding-top: 8px;
+            font-size: 11px;
+            color: #444;
+        }
+
+        @media print {
+            body.pdf-marmoles-doc {
+                max-width: none;
+                min-height: 0;
+                box-shadow: none;
+            }
+
+            body {
+                font-size: 11px;
+                line-height: 1.35;
+            }
+
+            .linear-doc-info {
+                margin-bottom: 6px;
+                padding: 4px 0 6px;
+                gap: 6px 10px;
+            }
+
+            .linear-cliente {
+                margin-bottom: 6px;
+                padding: 3px 0 6px;
+            }
+
+            .pdf-content-wrap {
+                padding: calc(var(--pdf-header-mm) + 2mm + var(--pdf-content-gap-below-header)) 6mm 0 6mm;
+            }
+
+            .pdf-main {
+                padding-bottom: calc(var(--pdf-footer-mm) + 3mm);
+            }
+
+            /* Ítems del presupuesto: mantener 13px al imprimir/exportar (coherente con pantalla). */
+            .items-table {
+                margin-bottom: 8px;
+                font-size: 13px;
+                line-height: 1.3;
+            }
+
+            .items-table thead {
+                display: table-header-group;
+            }
+
+            .items-table tfoot {
+                display: table-footer-group;
+            }
+
+            .items-table thead th {
+                font-size: 12px;
+            }
+
+            .items-table tbody td {
+                font-size: 13px;
+            }
+
+            .items-table .cell-desc-clean,
+            .items-table .cell-medida {
+                font-size: 13px;
+            }
+
+            .items-table .cell-qty,
+            .items-table .cell-m2,
+            .items-table tbody td.right {
+                font-size: 13px;
+            }
+
+            .items-table tbody tr {
+                break-inside: avoid-page;
+                page-break-inside: avoid;
+            }
+
+            .items-table tfoot.totals-foot {
+                break-inside: avoid-page;
+                page-break-inside: avoid;
+            }
+
+            .plano-container {
+                min-height: 0;
+                break-inside: auto;
+                page-break-inside: auto;
+            }
+
+            .legales {
+                font-size: 9px;
+                margin-top: 10px;
+                padding-top: 6px;
+                break-inside: avoid-page;
+                page-break-inside: avoid;
+            }
+
+            .firma-box {
+                margin-top: 48px;
+                padding-top: 16px;
+                break-inside: avoid-page;
+                page-break-inside: avoid;
+            }
+        }
+
+        .page-break {
+            break-before: page;
+            page-break-before: always;
+        }
+
+        .avoid-break {
+            break-inside: avoid-page;
+            page-break-inside: avoid;
+        }
+    </style>
+</head>
+
+<body class="pdf-marmoles-doc">
+    <!-- Carga el recurso (útil con data URL) y aplica onerror; el fondo va en body via CSS. -->
+    <div class="sr-only" aria-hidden="true">
+        <img src="__ENCABEZADO_PDF_URL__" alt="" width="1" height="1"
+            onerror="this.onerror=null;this.src='__LOGO_FALLBACK_URL__';" />
+    </div>
+
+    <div class="pdf-content-wrap">
+    <main class="pdf-main">
+    <section class="linear-doc-info" aria-label="Datos del presupuesto">
+        <span class="titulo-presup">PRESUPUESTO</span>
+        <div class="doc-empresa-line">
+            <span><strong>CUIT</strong> __EMPRESA_CUIT__</span>
+            <span> · </span>
+            <span>__EMPRESA_DIRECCION__</span>
+        </div>
+        <div class="doc-meta-row">
+            <span class="doc-inline-part"><span class="muted">Nº</span> <span class="presupuesto-codigo">__DOC_ID__</span></span>
+            __CORRELATIVO_HTML__
+            <span class="doc-inline-part"><strong>Fecha</strong> __FECHA__</span>
+            <span class="doc-inline-part muted">Válido __VENCIMIENTO__ · 48 h</span>
+        </div>
+    </section>
+
+    <section class="linear-cliente" aria-label="Datos del cliente">
+        <span class="kv"><span class="label">Señor/a</span> __CLIENTE_NOMBRE__</span>
+        <span class="kv kv--grow"><span class="label">Dir.</span> __CLIENTE_DIRECCION__</span>
+        <span class="kv"><span class="label">Tel.</span> __CLIENTE_TELEFONO__</span>
+        <span class="kv"><span class="label">CUIT/DNI</span> __CLIENTE_DNI__</span>
+        <span class="kv"><span class="label">IVA</span> __CLIENTE_IVA__</span>
+    </section>
+    __LINK_UBICACION_HTML__
+
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th class="th-desc">Descripción</th>
+                <th class="th-medida">Medida</th>
+                <th class="right th-num">Cantidad</th>
+                <th class="right th-num th-m2">m²</th>
+                <th class="right th-num">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            __ITEMS_ROWS__
+        </tbody>
+        <tfoot class="totals-foot">
+            __TOTALES_ROWS__
+        </tfoot>
+    </table>
+
+    __EXTRAS_TABLE_HTML__
+    __OBSERVACIONES_HTML__
+
+    __CONDICIONES_COMERCIALES_HTML__
+
+    <div class="legales">
+        <strong>TÉRMINOS Y CONDICIONES GENERALES:</strong>
+        <ul>
+            <li><strong>Validez de la oferta:</strong> 48 horas corridas a partir de la fecha, sujeto a disponibilidad
+                de stock.</li>
+            <li><strong>Forma de pago comercial:</strong> Según lo indicado en «Condiciones comerciales» de este
+                presupuesto; salvo acuerdo escrito distinto.</li>
+            <li><strong>Tiempos de Entrega:</strong> A confirmar al momento de la seña (aprox. 10-15 días hábiles).</li>
+            <li>Los materiales naturales (mármol, granito) pueden presentar variaciones de tono y vetas que no
+                constituyen defecto.</li>
+            <li>El presente presupuesto no constituye factura fiscal.</li>
+        </ul>
+    </div>
+
+    <div class="firma-box">
+        <div class="firma">Firma y Aclaración Cliente<br>Acepto conformidad</div>
+        <div class="firma">Por el proveedor</div>
+    </div>
+
+    </main>
+    </div>
+
+    <!-- ANEXOS COMENTADOS TEMPORALMENTE
+    <section class="page-break">
+        <h3 style="font-size:16px; font-weight:bold; margin-bottom:10px;">ANEXO 1 - Detalle de Piezas y Aperturas</h3>
+        __PIEZAS_DETALLE_HTML__
+    </section>
+
+    __ANEXOS_PLANO_HTML__
+    -->
+
+</body>
+
+</html>

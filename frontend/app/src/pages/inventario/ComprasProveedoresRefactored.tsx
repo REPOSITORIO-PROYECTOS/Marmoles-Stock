@@ -69,10 +69,10 @@ export function ComprasProveedoresRefactored() {
     }, []);
 
     return (
-        <div className="p-8">
+        <div className="w-full px-3 sm:px-6 md:px-8 py-4 md:py-8">
             <div className="mb-6">
                 <h1 className="text-3xl font-bold text-foreground mb-2">Compras y Proveedores</h1>
-                <p className="text-muted-foreground">Gestión centralizada de compras, materiales, productos y proveedores</p>
+                <p className="text-muted-foreground text-xs sm:text-sm">Gestión centralizada de compras, materiales, productos y proveedores</p>
             </div>
 
             <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="space-y-6">

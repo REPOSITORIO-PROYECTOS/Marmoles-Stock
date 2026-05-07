@@ -1,16 +1,35 @@
 import React, { type ReactNode } from 'react';
 import {
-  LayoutDashboard,
+  Users,
+  BarChart3,
+  FileText,
+  Phone,
+  DollarSign,
+  Hammer,
+  Eye,
+  Truck,
+  MessageSquare,
   Package,
   ShoppingCart,
+  Scissors,
   Layers,
+  ClipboardList,
   Menu,
   X,
+  Palette,
+  Ruler,
+  Briefcase,
+  ClipboardCheck,
+  Tag
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { get, post } from '../../api';
+import { toast } from 'sonner';
 
 interface SidebarProps { }
 
@@ -22,7 +41,22 @@ interface MenuItem {
 }
 
 const menuItems: MenuItem[] = [
-  { path: '/inventario/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" />, category: 'Inventario' },
+  { path: '/ventas/presupuestos', label: 'Crear Presupuesto', icon: <FileText className="h-5 w-5" />, category: 'CRM/Ventas' },
+  { path: '/ventas/leads', label: 'Pipeline de Leads', icon: <Users className="h-5 w-5" />, category: 'CRM/Ventas' },
+  { path: '/ventas/dashboard', label: 'Dashboard Comercial', icon: <BarChart3 className="h-5 w-5" />, category: 'CRM/Ventas' },
+  { path: '/finanzas', label: 'Finanzas y Cobranzas', icon: <DollarSign className="h-5 w-5" />, category: 'Financiero' },
+
+  { path: '/produccion/ordenes', label: 'Órdenes de Visita', icon: <ClipboardCheck className="h-5 w-5" />, category: 'Producción' },
+  { path: '/produccion/taller', label: 'Dashboard Taller', icon: <Hammer className="h-5 w-5" />, category: 'Producción' },
+  { path: '/produccion/pendientes', label: 'Lista de Pendientes', icon: <ClipboardList className="h-5 w-5" />, category: 'Producción' },
+  { path: '/produccion/etiquetas-n12', label: 'Etiquetas N12', icon: <Tag className="h-5 w-5" />, category: 'Producción' },
+
+
+  { path: '/logistica/entregas', label: 'Dashboard Entregas', icon: <Truck className="h-5 w-5" />, category: 'Logística' },
+  { path: '/logistica/ordenes', label: 'Tablero órdenes entrega', icon: <Package className="h-5 w-5" />, category: 'Logística' },
+  { path: '/logistica/supervision', label: 'Supervisión de obra', icon: <Eye className="h-5 w-5" />, category: 'Logística' },
+
+
   { path: '/inventario/gestion', label: 'Gestión Inventario', icon: <Package className="h-5 w-5" />, category: 'Inventario' },
   { path: '/inventario/compras', label: 'Compras y Proveedores', icon: <ShoppingCart className="h-5 w-5" />, category: 'Inventario' },
   { path: '/inventario/retazos', label: 'Stock de Retazos', icon: <Layers className="h-5 w-5" />, category: 'Inventario' },
@@ -31,6 +65,11 @@ const menuItems: MenuItem[] = [
 export function Sidebar({ }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [username, setUsername] = useState('Usuario');
   const location = useLocation();
   const currentPath = location.pathname;
   const categories = Array.from(new Set(menuItems.map(item => item.category)));
@@ -46,6 +85,45 @@ export function Sidebar({ }: SidebarProps) {
     mq?.addEventListener('change', handler);
     return () => mq?.removeEventListener('change', handler);
   }, []);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const me = await get<{ username: string }>('/api/usuarios/me');
+        if (me?.username) setUsername(me.username);
+      } catch {
+        // Silencioso: si la sesión expiró, api.ts ya redirige a login.
+      }
+    };
+    void loadUser();
+  }, []);
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword) {
+      toast.error('Completá contraseña actual y nueva');
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast.error('La nueva contraseña debe tener al menos 8 caracteres');
+      return;
+    }
+    try {
+      setIsSavingPassword(true);
+      await post<{ ok: boolean }>('/api/auth/change-password', {
+        password_actual: currentPassword,
+        password_nueva: newPassword,
+      });
+      setCurrentPassword('');
+      setNewPassword('');
+      setIsUserMenuOpen(false);
+      toast.success('Contraseña actualizada');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo cambiar la contraseña';
+      toast.error(message);
+    } finally {
+      setIsSavingPassword(false);
+    }
+  };
 
   return (
     <>
@@ -81,13 +159,13 @@ export function Sidebar({ }: SidebarProps) {
         <div className="p-6 lg:p-8">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-primary font-bold text-xl">MDM</span>
+              <span className="text-primary font-bold text-xl">JF</span>
             </div>
             <div>
               <h1 className="text-sidebar-foreground text-xs font-bold leading-tight">
-                MUNDO DI MARMI
+                JAVIER FLORES<br />MÁRMOLES Y GRANITOS
               </h1>
-              <p className="text-sidebar-foreground/70 text-sm">Inventario y depósito</p>
+              <p className="text-sidebar-foreground/70 text-sm">Sistema de Gestión para Marmolería</p>
             </div>
           </div>
         </div>
@@ -141,12 +219,53 @@ export function Sidebar({ }: SidebarProps) {
 
         {/* Footer */}
         <div className="p-4 border-t border-sidebar-border">
+          <button
+            type="button"
+            onClick={() => setIsUserMenuOpen((prev) => !prev)}
+            className="w-full mb-3 rounded-lg border border-sidebar-border bg-sidebar/40 px-3 py-2 text-left text-sidebar-foreground hover:bg-sidebar-accent/40 transition-colors"
+          >
+            <p className="text-xs text-sidebar-foreground/60">Usuario</p>
+            <p className="text-sm font-medium">{username}</p>
+          </button>
+          {isUserMenuOpen && (
+            <div className="mb-3 rounded-lg border border-sidebar-border bg-sidebar/30 p-3 space-y-3">
+              <p className="text-xs uppercase tracking-wide text-sidebar-foreground/60">Cambiar contraseña</p>
+              <div className="space-y-1">
+                <Label htmlFor="password-actual" className="text-sidebar-foreground/80 text-xs">Contraseña actual</Label>
+                <Input
+                  id="password-actual"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="h-9 bg-white/95"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="password-nueva" className="text-sidebar-foreground/80 text-xs">Nueva contraseña</Label>
+                <Input
+                  id="password-nueva"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="h-9 bg-white/95"
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={handleChangePassword}
+                disabled={isSavingPassword}
+                className="w-full"
+              >
+                {isSavingPassword ? 'Guardando...' : 'Guardar contraseña'}
+              </Button>
+            </div>
+          )}
           <div className="bg-sidebar-accent rounded-lg p-4">
             <p className="text-sidebar-foreground/80 text-sm">
-              Mundo di Marmi · Sistema de Gestión v2.0
+              JAVIER FLORES · Sistema de Gestión v2.0
             </p>
             <p className="text-sidebar-foreground/60 text-xs mt-1">
-              © 2026 Mundo di Marmi
+              © 2026 JAVIER FLORES MÁRMOLES Y GRANITOS
             </p>
           </div>
         </div>

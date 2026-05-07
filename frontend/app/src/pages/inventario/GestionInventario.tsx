@@ -12,16 +12,13 @@ import { Material } from './types';
 import { useProductosEstaticos } from './hooks/useProductosEstaticos';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { Button } from '../../components/ui/button';
-import { del, get } from '../../api';
+import { del } from '../../api';
 import { toast } from 'sonner';
 
 export function GestionInventario() {
   const [materialParaEliminar, setMaterialParaEliminar] = useState<Material | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [vista, setVista] = useState<'materiales' | 'productos'>('materiales');
-  const [articulos, setArticulos] = useState<any[]>([]);
-  const [extrasCatalogo, setExtrasCatalogo] = useState<any[]>([]);
-  const [loadingInsumos, setLoadingInsumos] = useState(false);
 
   const {
     allMateriales,
@@ -83,26 +80,6 @@ export function GestionInventario() {
     await fetchLotesForMaterial(material);
   };
 
-  const fetchInsumos = async () => {
-    setLoadingInsumos(true);
-    setArticulos([]);
-    setExtrasCatalogo([]);
-    try {
-      const arts = await get<any[]>('/api/articulos');
-      setArticulos(Array.isArray(arts) ? arts : []);
-    } catch {
-      setArticulos([]);
-    }
-    try {
-      const extras = await get<any[]>('/api/servicios?categoria=ExtraPresupuesto');
-      setExtrasCatalogo(Array.isArray(extras) ? extras : []);
-    } catch {
-      setExtrasCatalogo([]);
-    } finally {
-      setLoadingInsumos(false);
-    }
-  };
-
   return (
     <div className="h-full flex flex-col bg-background">
       <PageHeader
@@ -132,7 +109,6 @@ export function GestionInventario() {
               onClick={() => {
                 setVista('productos');
                 fetchProductos();
-                fetchInsumos();
               }}
               className="rounded-none border-l"
             >
@@ -191,76 +167,32 @@ export function GestionInventario() {
               <CardContent>
                 {loadingProductos ? (
                   <div className="text-sm text-muted-foreground">Cargando productos…</div>
-                ) : loadingInsumos ? (
-                  <div className="text-sm text-muted-foreground">Cargando artículos y extras…</div>
-                ) : productos.length === 0 && articulos.length === 0 && extrasCatalogo.length === 0 ? (
+                ) : productos.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>No hay insumos activos</p>
                   </div>
                 ) : (
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-sm font-semibold mb-2">Artículos</h3>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Nombre</TableHead>
-                            <TableHead>Descripción</TableHead>
-                            <TableHead>Precio</TableHead>
-                            <TableHead>Categoría</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {articulos.map((p) => (
-                            <TableRow key={`art-${p.id}`}>
-                              <TableCell className="font-medium">{p.nombre}</TableCell>
-                              <TableCell>{p.descripcion || '-'}</TableCell>
-                              <TableCell>${Number(p.precio_unitario || 0).toLocaleString()}</TableCell>
-                              <TableCell>{p.categoria || '-'}</TableCell>
-                            </TableRow>
-                          ))}
-                          {articulos.length === 0 && (
-                            <TableRow>
-                              <TableCell colSpan={4} className="text-sm text-muted-foreground">Sin artículos activos.</TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-
-                    <div>
-                      <h3 className="text-sm font-semibold mb-2">Extras de presupuesto (opcional)</h3>
-                      <p className="text-xs text-muted-foreground mb-2">
-                        Si el módulo comercial está desactivado en el servidor, esta lista puede quedar vacía.
-                      </p>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Nombre</TableHead>
-                            <TableHead>Precio</TableHead>
-                            <TableHead>Unidad</TableHead>
-                            <TableHead>Categoría</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {extrasCatalogo.map((e) => (
-                            <TableRow key={`ext-${e.id}`}>
-                              <TableCell className="font-medium">{e.nombre}</TableCell>
-                              <TableCell>${Number(e.precio_base || 0).toLocaleString()}</TableCell>
-                              <TableCell>{e.unidad || 'u'}</TableCell>
-                              <TableCell>{e.categoria || 'ExtraPresupuesto'}</TableCell>
-                            </TableRow>
-                          ))}
-                          {extrasCatalogo.length === 0 && (
-                            <TableRow>
-                              <TableCell colSpan={4} className="text-sm text-muted-foreground">Sin extras activos.</TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nombre</TableHead>
+                        <TableHead>Descripción</TableHead>
+                        <TableHead>Precio</TableHead>
+                        <TableHead>Categoría</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {productos.map((p) => (
+                        <TableRow key={p.id}>
+                          <TableCell className="font-medium">{p.nombre}</TableCell>
+                          <TableCell>{p.descripcion || '-'}</TableCell>
+                          <TableCell>${(p.precio_venta || 0).toLocaleString()}</TableCell>
+                          <TableCell>{p.categoria || '-'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 )}
               </CardContent>
             </Card>
