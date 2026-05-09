@@ -38,7 +38,13 @@ from app.models import Lote, Material, MovimientoInventario, Placa, Retazo  # no
 
 
 def _default_xlsx_path() -> Path:
-    return Path(__file__).resolve().parents[3] / "Control_Inventario_Marmoleria 2026.xlsx"
+    script_path = Path(__file__).resolve()
+    name = "Control_Inventario_Marmoleria 2026.xlsx"
+    for parent in script_path.parents:
+        candidate = parent / name
+        if candidate.is_file():
+            return candidate
+    return script_path.parent / name
 
 
 def _default_sqlite_path() -> Path:
@@ -463,7 +469,7 @@ def _import_remanentes(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Importar inventario desde Excel de control")
-    parser.add_argument("--file", type=Path, default=_default_xlsx_path(), help="Ruta al .xlsx")
+    parser.add_argument("--file", type=Path, default=None, help="Ruta al .xlsx")
     parser.add_argument("--sheet-bloques", default="Control de Bloques", help="Hoja placas/bloques")
     parser.add_argument("--sheet-remanentes", default="Inventario Remanentes", help="Hoja retazos")
     parser.add_argument("--dry-run", action="store_true", help="Solo leer Excel, no escribir BD")
@@ -476,6 +482,9 @@ def main() -> None:
     parser.add_argument("--no-bloques", action="store_true", help="No importar hoja Control de Bloques")
     parser.add_argument("--no-remanentes", action="store_true", help="No importar hoja Inventario Remanentes")
     args = parser.parse_args()
+
+    if args.file is None:
+        args.file = _default_xlsx_path()
 
     if not args.file.is_file():
         raise SystemExit(f"No existe el archivo: {args.file}")

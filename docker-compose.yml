@@ -1,16 +1,18 @@
+name: dimarmi
+
 services:
   db:
     image: postgres:15-alpine
-    container_name: marmoles_db
+    container_name: dimarmi_db
     environment:
       POSTGRES_DB: marmoles_db
       POSTGRES_USER: marmoles_user
       POSTGRES_PASSWORD: marmoles_password
       POSTGRES_INITDB_ARGS: '-E UTF8'
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:5490:5432"
     volumes:
-      - marmoles_pgdata:/var/lib/postgresql/data
+      - dimarmi_pgdata:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U marmoles_user"]
@@ -32,14 +34,14 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: marmoles_backend
+    container_name: dimarmi_backend
     restart: always
     environment:
-      DATABASE_URL: postgresql+psycopg2://marmoles_user:marmoles_password@marmoles_db:5432/marmoles_db
+      DATABASE_URL: postgresql+psycopg2://marmoles_user:marmoles_password@dimarmi_db:5432/marmoles_db
       PYTHONUNBUFFERED: 1
       ENABLE_COMMERCIAL_MODULES: "false"
     ports:
-      - "127.0.0.1:8020:8000"
+      - "127.0.0.1:4921:8000"
     volumes:
       - ./backend:/app
       - /app/__pycache__
@@ -62,16 +64,17 @@ services:
           memory: 512M
     networks:
       - default
+      - cerebro
 
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
-    container_name: marmoles_frontend
+    container_name: dimarmi_frontend
     restart: always
     ports:
       # nginx escucha en :80 dentro del contenedor; el JS usa mismo origen + /api (proxeado)
-      - "127.0.0.1:5120:80"
+      - "127.0.0.1:4920:80"
     depends_on:
       backend:
         condition: service_healthy
@@ -91,11 +94,15 @@ services:
           memory: 256M
     networks:
       - default
+      - cerebro
 
 volumes:
-  marmoles_pgdata:
+  dimarmi_pgdata:
     driver: local
 
 networks:
   default:
     driver: bridge
+  cerebro:
+    external: true
+    name: cerebro_default
