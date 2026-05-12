@@ -10,7 +10,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_INITDB_ARGS: '-E UTF8'
     ports:
+<<<<<<< HEAD
       - "127.0.0.1:${DB_PORT}:5432"
+=======
+      - "127.0.0.1:5490:5432"
+>>>>>>> 8bb07fce7e76925bfefc668f5159f73f59a264e5
     volumes:
       - dimarmi_pgdata:/var/lib/postgresql/data
     restart: unless-stopped
@@ -37,7 +41,11 @@ services:
     container_name: dimarmi_backend
     restart: always
     environment:
+<<<<<<< HEAD
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@dimarmi_db:5432/${POSTGRES_DB}
+=======
+      DATABASE_URL: postgresql+psycopg2://marmoles_user:marmoles_password@dimarmi_db:5432/marmoles_db
+>>>>>>> 8bb07fce7e76925bfefc668f5159f73f59a264e5
       PYTHONUNBUFFERED: 1
       ENABLE_COMMERCIAL_MODULES: ${ENABLE_COMMERCIAL_MODULES:-false}
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN}
@@ -45,7 +53,14 @@ services:
       ADMIN_USERNAME: ${ADMIN_USERNAME}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
     ports:
+<<<<<<< HEAD
       - "127.0.0.1:${BACKEND_PORT}:8000"
+=======
+      - "127.0.0.1:4921:8000"
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__
+>>>>>>> 8bb07fce7e76925bfefc668f5159f73f59a264e5
     depends_on:
       db:
         condition: service_healthy
@@ -74,7 +89,12 @@ services:
     container_name: dimarmi_frontend
     restart: always
     ports:
+<<<<<<< HEAD
       - "127.0.0.1:${FRONTEND_PORT}:80"
+=======
+      # nginx escucha en :80 dentro del contenedor; el JS usa mismo origen + /api (proxeado)
+      - "127.0.0.1:4920:80"
+>>>>>>> 8bb07fce7e76925bfefc668f5159f73f59a264e5
     depends_on:
       backend:
         condition: service_healthy
@@ -98,8 +118,12 @@ services:
 
 volumes:
   dimarmi_pgdata:
+<<<<<<< HEAD
     external: true
     name: dimarmi_postgres_data
+=======
+    driver: local
+>>>>>>> 8bb07fce7e76925bfefc668f5159f73f59a264e5
 
 networks:
   default:
