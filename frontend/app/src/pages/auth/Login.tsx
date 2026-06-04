@@ -6,8 +6,9 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { post } from "../../api";
 import { toast } from "sonner";
-import { LogIn, User } from "lucide-react";
-import { BRAND_LEGAL_NAME, BRAND_MONOGRAM, BRAND_TAGLINE } from "../../brand";
+import { LogIn, MonitorDown, User } from "lucide-react";
+import { BRAND_LEGAL_NAME, BRAND_MONOGRAM, BRAND_TAGLINE, DESKTOP_RELEASES_URL } from "../../brand";
+import { isElectronApp } from "../../utils/isElectronApp";
 
 type Props = {
   onLogin: () => void;
@@ -18,6 +19,7 @@ export function Login({ onLogin }: Props) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const showDesktopDownload = !isElectronApp();
 
   const handleLogin = async (e?: FormEvent) => {
     e?.preventDefault();
@@ -107,6 +109,31 @@ export function Login({ onLogin }: Props) {
             </div>
           </CardContent>
         </Card>
+
+        {showDesktopDownload && (
+          <Card className="w-full shadow-sm mt-4 border-primary/20">
+            <CardContent className="pt-5 pb-5">
+              <div className="flex gap-3 items-start">
+                <div className="p-2 rounded-lg bg-primary/10 shrink-0">
+                  <MonitorDown className="h-5 w-5 text-primary" />
+                </div>
+                <div className="space-y-2 min-w-0">
+                  <p className="text-sm font-medium">App de escritorio (Windows)</p>
+                  <p className="text-xs text-muted-foreground">
+                    Instalador <strong>Mundo di Marmi</strong> con inventario local y actualizaciones
+                    automáticas.
+                  </p>
+                  <Button variant="outline" size="sm" className="gap-2" asChild>
+                    <a href={DESKTOP_RELEASES_URL} target="_blank" rel="noopener noreferrer">
+                      <MonitorDown className="h-4 w-4" />
+                      Descargar instalador (.exe)
+                    </a>
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

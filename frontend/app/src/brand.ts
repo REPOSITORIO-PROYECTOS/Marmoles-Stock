@@ -7,3 +7,7 @@ export const BRAND_COPYRIGHT = `© ${new Date().getFullYear()} ${BRAND_LEGAL_NAM
 
 /** Categoría del menú lateral (módulo depósito). */
 export const INVENTORY_MENU_CATEGORY = 'Inventario';
+
+/** Instalador Windows (GitHub Releases). */
+export const DESKTOP_RELEASES_URL =
+  'https://github.com/REPOSITORIO-PROYECTOS/Marmoles-Stock/releases/latest';
