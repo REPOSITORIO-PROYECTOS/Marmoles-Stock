@@ -3,6 +3,7 @@
  * Todas las vistas (PDF, CRM vía download, historial, finanzas) deben usar esta tubería.
  */
 import type { DatosPresupuesto } from './presupuestoExporter';
+import { BRAND_LEGAL_NAME } from '../brand';
 import { formatFechaPresupuestoPdfDisplay, parseMsFromBackendFecha } from './fechaArgentina';
 import { generatePlanImage } from './planImage';
 
@@ -84,9 +85,9 @@ export interface PresupuestoRenderContext {
 }
 
 export const DEFAULT_EMPRESA_PRESUPUESTO: DatosPresupuesto['empresa'] = {
-  nombre: 'JAVIER FLORES MÁRMOLES Y GRANITOS',
-  cuit: '20-29602748-1',
-  direccion: 'España 1031 (N) - San Juan',
+  nombre: BRAND_LEGAL_NAME,
+  cuit: '',
+  direccion: '',
 };
 
 function normUnidad(u: string | null | undefined): string {

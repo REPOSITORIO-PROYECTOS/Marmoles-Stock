@@ -421,8 +421,8 @@ export function buildPresupuestoArgentinoHtml(datos: DatosPresupuesto): string {
   let html = presupuestoTemplate;
   const replacements: Record<string, string> = {
     '__TITLE__': toSafeText(datos.nombreArchivo || `Presupuesto ${datos.id}`),
-    '__EMPRESA_CUIT__': toSafeText(datos.empresa?.cuit, '20-29602748-1'),
-    '__EMPRESA_DIRECCION__': toSafeText(datos.empresa?.direccion, 'España 1031 (n) - San Juan'),
+    '__EMPRESA_CUIT__': toSafeText(datos.empresa?.cuit, ''),
+    '__EMPRESA_DIRECCION__': toSafeText(datos.empresa?.direccion, ''),
     '__DOC_ID__': toSafeText(datos.id),
     '__CORRELATIVO_HTML__': datos.correlativoGlobal
       ? `<span class="doc-inline-part muted"><strong>Corr.</strong> ${datos.correlativoGlobal}</span>`

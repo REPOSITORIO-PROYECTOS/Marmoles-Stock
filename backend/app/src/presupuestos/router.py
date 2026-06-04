@@ -118,7 +118,7 @@ async def enviar_presupuesto_email(id: str, email: str, file: UploadFile = File(
     smtp_port = int(os.getenv("SMTP_PORT", "1025"))
     smtp_user = os.getenv("SMTP_USER", "")
     smtp_pass = os.getenv("SMTP_PASS", "")
-    sender_email = os.getenv("SENDER_EMAIL", "no-reply@marmoles-jf.com")
+    sender_email = os.getenv("SENDER_EMAIL", "no-reply@dimarmi.local")
     
     try:
         msg = MIMEMultipart()

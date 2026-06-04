@@ -20,7 +20,7 @@ const baseDatos: DatosPresupuesto = {
     condicionIva: 'Consumidor Final',
   },
   empresa: {
-    nombre: 'JF Mármoles',
+    nombre: 'MUNDO DI MARMI',
     cuit: '20-XXXXXXXX-X',
     direccion: 'San Juan',
   },

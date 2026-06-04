@@ -10,7 +10,7 @@ class UsuarioCreate(BaseModel):
     username: str
     email: str
     password: str
-    rol: Optional[str] = "ventas"
+    rol: Optional[str] = "deposito"
     nombre_completo: Optional[str] = None
 
 

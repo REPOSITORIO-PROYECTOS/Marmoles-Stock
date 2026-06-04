@@ -41,7 +41,7 @@ describe('buildPresupuestoEnvioClienteMensaje', () => {
   it('incluye nombre y firma', () => {
     const t = buildPresupuestoEnvioClienteMensaje('Martín');
     expect(t).toContain('Estimado Martín');
-    expect(t).toContain('JF Marmoles y Granitos');
+    expect(t).toContain('MUNDO DI MARMI');
     expect(t).toContain('presupuesto solicitado');
   });
 

@@ -381,7 +381,7 @@ describe('buildPresupuestoArgentinoHtml', () => {
         telefono: '',
         condicionIva: 'Consumidor Final',
       },
-      empresa: { nombre: 'JF', cuit: '1', direccion: 'SJ' },
+      empresa: { nombre: 'MUNDO DI MARMI', cuit: '1', direccion: 'SJ' },
       items: [
         {
           detalle: 'gris mara',

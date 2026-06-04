@@ -31,9 +31,9 @@ export const datosPresupuestoDemo: DatosPresupuesto = {
     condicionIva: 'Consumidor Final',
   },
   empresa: {
-    nombre: 'Javier Flores Mármoles',
-    cuit: '20-29602748-1',
-    direccion: 'España 1031 (n) - San Juan',
+    nombre: 'MUNDO DI MARMI',
+    cuit: '',
+    direccion: '',
   },
   items: [
     {

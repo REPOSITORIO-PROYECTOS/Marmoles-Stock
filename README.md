@@ -85,6 +85,16 @@ git push -u origin main
   - `npm run dev`, `npm run build`, `npm run preview`.
   - `npm run lint` usa la configuración de `eslint.config.js`.
 
+## App de escritorio (Electron)
+
+Producto para el cliente: instalador **Dimarmi** (Windows), no la URL web.
+
+- Código: `electron/` (ventana + backend local SQLite).
+- Marca centralizada: `frontend/app/src/brand.ts` (`MDM` / `MUNDO DI MARMI` / `Inventario y depósito`).
+- Menú depósito: Dashboard, Gestión Inventario, Compras y Proveedores, Stock de Retazos (`VITE_DEPOSITO_ONLY=true`).
+- Build CI: tag `v*.*.*` o workflow manual → artefacto `Dimarmi Setup *.exe` en GitHub Releases.
+- Tras cambiar textos o marca, hay que **volver a generar el .exe** (el instalador v1.0.0 publicado aún lleva la marca anterior).
+
 ## Pruebas
 - Backend: `cd backend && pytest` (tests en `backend/app/tests` y `backend/app/src/corte_modulo/tests`).
 - Frontend: `cd frontend/app && npm test` (config en `frontend/app/src/test/setup.ts`).

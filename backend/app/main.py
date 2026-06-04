@@ -281,7 +281,14 @@ def _ensure_bootstrap():
         if not admin:
             salt = os.urandom(16).hex()
             pwd = hash_password("admin", salt)
-            admin = User(username="admin", email="admin@example.com", password_hash=pwd, password_salt=salt, role="admin", active=True)
+            admin = User(
+                username="admin",
+                email="admin@dimarmi.local",
+                password_hash=pwd,
+                password_salt=salt,
+                role="admin",
+                active=True,
+            )
             db.add(admin)
             db.commit()
     finally:

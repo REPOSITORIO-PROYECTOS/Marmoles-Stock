@@ -27,6 +27,13 @@ import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import {
+  BRAND_COPYRIGHT,
+  BRAND_LEGAL_NAME,
+  BRAND_MONOGRAM,
+  BRAND_TAGLINE,
+  INVENTORY_MENU_CATEGORY,
+} from '../../brand';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { get, post } from '../../api';
@@ -58,10 +65,13 @@ const menuItems: MenuItem[] = [
   { path: '/logistica/supervision', label: 'Supervisión de obra', icon: <Eye className="h-5 w-5" />, category: 'Logística' },
 
 
-  { path: '/inventario/gestion', label: 'Gestión Inventario', icon: <Package className="h-5 w-5" />, category: 'Inventario' },
-  { path: '/inventario/compras', label: 'Compras y Proveedores', icon: <ShoppingCart className="h-5 w-5" />, category: 'Inventario' },
-  { path: '/inventario/retazos', label: 'Stock de Retazos', icon: <Layers className="h-5 w-5" />, category: 'Inventario' },
+  { path: '/inventario/dashboard', label: 'Dashboard', icon: <BarChart3 className="h-5 w-5" />, category: INVENTORY_MENU_CATEGORY },
+  { path: '/inventario/gestion', label: 'Gestión Inventario', icon: <Package className="h-5 w-5" />, category: INVENTORY_MENU_CATEGORY },
+  { path: '/inventario/compras', label: 'Compras y Proveedores', icon: <ShoppingCart className="h-5 w-5" />, category: INVENTORY_MENU_CATEGORY },
+  { path: '/inventario/retazos', label: 'Stock de Retazos', icon: <Layers className="h-5 w-5" />, category: INVENTORY_MENU_CATEGORY },
 ];
+
+const DEPOSITO_ONLY = import.meta.env.VITE_DEPOSITO_ONLY === 'true';
 
 export function Sidebar({ }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -74,7 +84,13 @@ export function Sidebar({ }: SidebarProps) {
   const [userRole, setUserRole] = useState('');
   const location = useLocation();
   const currentPath = location.pathname;
-  const categories = Array.from(new Set(menuItems.map(item => item.category)));
+  const visibleMenuItems = menuItems.filter((item) => {
+    if (DEPOSITO_ONLY || userRole === 'deposito') {
+      return item.category === INVENTORY_MENU_CATEGORY;
+    }
+    return true;
+  });
+  const categories = Array.from(new Set(visibleMenuItems.map((item) => item.category)));
 
   const handleLinkClick = () => {
     setIsOpen(false); // Cerrar sidebar en móvil después de seleccionar
@@ -162,13 +178,13 @@ export function Sidebar({ }: SidebarProps) {
         <div className="p-6 lg:p-8">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-primary font-bold text-xl">JF</span>
+              <span className="text-primary font-bold text-lg tracking-tight">{BRAND_MONOGRAM}</span>
             </div>
             <div>
-              <h1 className="text-sidebar-foreground text-xs font-bold leading-tight">
-                JAVIER FLORES<br />MÁRMOLES Y GRANITOS
+              <h1 className="text-sidebar-foreground text-xs font-bold leading-tight tracking-wide">
+                {BRAND_LEGAL_NAME}
               </h1>
-              <p className="text-sidebar-foreground/70 text-sm">Sistema de Gestión para Marmolería</p>
+              <p className="text-sidebar-foreground/70 text-sm mt-0.5">{BRAND_TAGLINE}</p>
             </div>
           </div>
         </div>
@@ -189,7 +205,7 @@ export function Sidebar({ }: SidebarProps) {
                 {category}
               </h3>
               <div className="space-y-1">
-                {menuItems
+                {visibleMenuItems
                   .filter(item => item.category === category)
                   .map(item => (
                     <Link
@@ -240,7 +256,7 @@ export function Sidebar({ }: SidebarProps) {
                     <span className={currentPath === '/admin/usuarios' ? 'text-primary' : ''}>
                       <ShieldCheck className="h-5 w-5" />
                     </span>
-                    <span className="flex-1 text-left">Usuarios</span>
+                    <span className="flex-1 text-left">Gestión de usuarios</span>
                   </Button>
                 </Link>
               </div>
@@ -293,10 +309,10 @@ export function Sidebar({ }: SidebarProps) {
           )}
           <div className="bg-sidebar-accent rounded-lg p-4">
             <p className="text-sidebar-foreground/80 text-sm">
-              JAVIER FLORES · Sistema de Gestión v2.0
+              {BRAND_MONOGRAM} · {BRAND_TAGLINE}
             </p>
             <p className="text-sidebar-foreground/60 text-xs mt-1">
-              © 2026 JAVIER FLORES MÁRMOLES Y GRANITOS
+              {BRAND_COPYRIGHT}
             </p>
           </div>
         </div>

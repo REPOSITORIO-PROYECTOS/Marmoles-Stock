@@ -3,6 +3,7 @@ import type { ChangeEvent } from 'react';
 import { get, patch, post } from '../api';
 import { toast } from 'sonner';
 import { downloadPresupuestoPdf } from '../utils/presupuestoPdfFromApi';
+import { BRAND_LEGAL_NAME } from '../brand';
 import { parseMsFromBackendFecha } from '../utils/fechaArgentina';
 import {
   normalizeWhatsAppNumberAr,
@@ -288,7 +289,7 @@ export function usePipelineLeads() {
         }
         const mensaje = buildPresupuestoWhatsAppMessage({
             nombreCliente: lead.nombre,
-            empresaNombre: 'Javier Flores Mármoles',
+            empresaNombre: BRAND_LEGAL_NAME,
         });
         const opened = openWhatsAppChat(e164, mensaje);
         if (!opened) {

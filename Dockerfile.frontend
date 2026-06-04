@@ -8,6 +8,9 @@ RUN npm ci
 
 COPY frontend/app/ ./
 
+ARG VITE_DEPOSITO_ONLY=true
+ENV VITE_DEPOSITO_ONLY=$VITE_DEPOSITO_ONLY
+
 # En producción detrás de nginx, el cliente usa mismo origen y /api se proxea (no fijar VITE_API_BASE_URL aquí).
 RUN npm run build
 

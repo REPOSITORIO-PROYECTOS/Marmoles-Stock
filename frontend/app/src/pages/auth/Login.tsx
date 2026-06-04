@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { post } from "../../api";
 import { toast } from "sonner";
 import { LogIn, User } from "lucide-react";
+import { BRAND_LEGAL_NAME, BRAND_MONOGRAM, BRAND_TAGLINE } from "../../brand";
 
 type Props = {
   onLogin: () => void;
@@ -33,7 +34,7 @@ export function Login({ onLogin }: Props) {
       if (resp && (resp as any).token) {
         localStorage.setItem("token", (resp as any).token);
         onLogin();
-        navigate("/produccion/taller", { replace: true });
+        navigate("/inventario/dashboard", { replace: true });
         return;
       }
       toast.error("Credenciales inválidas");
@@ -49,21 +50,12 @@ export function Login({ onLogin }: Props) {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-primary/5 to-accent/10 p-6">
       <div className="w-full max-w-md">
         <div className="mb-6 flex items-center justify-center gap-3">
-          <div className="h-11 w-11 rounded-xl bg-primary/10 border border-primary/15 flex items-center justify-center">
-            <svg viewBox="0 0 64 64" className="h-6 w-6 text-primary" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <path d="M20 22c-4-3-8-3-10 2-2 5 0 15 4 17 3 2 6-2 7-6l-1-13Z" fill="currentColor" opacity=".35"/>
-              <path d="M44 22c4-3 8-3 10 2 2 5 0 15-4 17-3 2-6-2-7-6l1-13Z" fill="currentColor" opacity=".35"/>
-              <path d="M14 33c0-10 8-18 18-18s18 8 18 18v6c0 9-7 16-16 16h-4c-9 0-16-7-16-16v-6Z" fill="currentColor" opacity=".20"/>
-              <path d="M20 33c0-6 5-11 12-11s12 5 12 11" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity=".55"/>
-              <path d="M28 40c0 2-1 3-3 3s-3-1-3-3 1-3 3-3 3 1 3 3Z" fill="currentColor" opacity=".55"/>
-              <path d="M42 40c0 2-1 3-3 3s-3-1-3-3 1-3 3-3 3 1 3 3Z" fill="currentColor" opacity=".55"/>
-              <path d="M32 44c2 0 4 1 4 3 0 3-2 6-4 6s-4-3-4-6c0-2 2-3 4-3Z" fill="currentColor" opacity=".6"/>
-              <path d="M22 49c3 3 7 5 10 5s7-2 10-5" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity=".55"/>
-            </svg>
+          <div className="h-11 w-11 rounded-xl bg-primary/10 border border-primary/15 flex items-center justify-center font-bold text-primary text-sm tracking-tight">
+            {BRAND_MONOGRAM}
           </div>
           <div className="text-center">
-            <div className="text-lg font-semibold leading-tight">JAVIER FLORES MÁRMOLES Y GRANITOS</div>
-            <div className="text-sm text-muted-foreground">Sistema de Gestión</div>
+            <div className="text-lg font-semibold leading-tight">{BRAND_LEGAL_NAME}</div>
+            <div className="text-sm text-muted-foreground">{BRAND_TAGLINE}</div>
           </div>
         </div>
 

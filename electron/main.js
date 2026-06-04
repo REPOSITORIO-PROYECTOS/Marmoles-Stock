@@ -42,7 +42,7 @@ function startBackend() {
   const env = {
     ...process.env,
     DATABASE_URL: `sqlite:///${getDbPath()}`,
-    ENABLE_COMMERCIAL_MODULES: 'true',
+    ENABLE_COMMERCIAL_MODULES: 'false',
     HOST: '127.0.0.1',
     PORT: String(BACKEND_PORT),
     FRONTEND_DIST_DIR: frontendDir || '',
@@ -117,7 +117,7 @@ function createMainWindow() {
     minWidth: 1024,
     minHeight: 700,
     show: false,
-    title: 'Marmoles Taup · Sistema de Gestión',
+    title: 'MUNDO DI MARMI · Inventario y depósito',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

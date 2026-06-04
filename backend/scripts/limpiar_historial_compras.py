@@ -42,7 +42,7 @@ try:
         'Proveedor de Prueba',
         'Juancito',
         'Simon',
-        'javier',
+        'proveedor_prueba',
         'test',
         'Test'
     ]

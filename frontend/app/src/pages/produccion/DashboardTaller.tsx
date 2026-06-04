@@ -18,6 +18,7 @@ import {
 import { toast } from 'sonner';
 import { get, del, post } from '../../api';
 import { API_BASE_URL } from '../../config';
+import { BRAND_MONOGRAM } from '../../brand';
 
 /** Base para URLs absolutas de estáticos del backend; vacío = mismo origen (nginx hace proxy de /uploads, /static, /api). */
 const STATIC_ASSET_BASE = API_BASE_URL;
@@ -141,7 +142,7 @@ function TarjetaOrden({ orden, onVerDetalle, onAvanzar, onEliminar }: TarjetaOrd
       html += `
         <div class="etiqueta">
           <div class="header">
-            <div class="title">JAVIER FLORES - ETIQUETA DE PIEZA</div>
+            <div class="title">${BRAND_MONOGRAM} - ETIQUETA DE PIEZA</div>
             <div class="field"><span class="label">CLIENTE:</span> ${orden.cliente}</div>
           </div>
           <div class="field"><span class="label">ORDEN / PIEZA:</span> ${orden.id.slice(0, 8)} / ${pieza.id.slice(-4)}</div>

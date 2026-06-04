@@ -19,6 +19,7 @@ const DashboardEntregasSimplificado = lazy(() => import('./pages/logistica/Dashb
 const GestionInventario = lazy(() => import('./pages/inventario/GestionInventario').then(m => ({ default: m.GestionInventario })));
 const ComprasProveedores = lazy(() => import('./pages/inventario/ComprasProveedoresRefactored').then(m => ({ default: m.ComprasProveedoresRefactored })));
 const StockRetazos = lazy(() => import('./pages/inventario/StockRetazos').then(m => ({ default: m.StockRetazos })));
+const DashboardStock = lazy(() => import('./pages/inventario/DashboardStock').then(m => ({ default: m.DashboardStock })));
 const GestionOrdenes = lazy(() => import('./pages/produccion/GestionOrdenes').then(m => ({ default: m.GestionOrdenes })));
 const EtiquetasN12 = lazy(() => import('./pages/produccion/EtiquetasN12').then(m => ({ default: m.EtiquetasN12 })));
 const EncuestaPublica = lazy(() => import('./pages/logistica/EncuestaPublica').then(m => ({ default: m.EncuestaPublica })));
@@ -27,6 +28,8 @@ const SupervisionObraPage = lazy(() => import('./pages/logistica/SupervisionObra
 const UsuariosPage = lazy(() => import('./pages/admin/Usuarios').then(m => ({ default: m.Usuarios })));
 
 // Componente de carga
+const DEPOSITO_ONLY = import.meta.env.VITE_DEPOSITO_ONLY === 'true';
+
 const LoadingFallback = () => (
   <div className="flex h-full w-full items-center justify-center">
     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -114,36 +117,35 @@ export default function App() {
       />
 
       <Route element={<ProtectedShell authed={authed} />}>
-        <Route path="/" element={<Navigate to="/produccion/taller" replace />} />
+        <Route path="/" element={<Navigate to="/inventario/dashboard" replace />} />
 
-        <Route path="/ventas/presupuestos" element={<Suspense fallback={<LoadingFallback />}><ConstructorPresupuestos /></Suspense>} />
-        <Route path="/ventas/constructor" element={<Suspense fallback={<LoadingFallback />}><ConstructorPresupuestos /></Suspense>} />
-        <Route path="/ventas/leads" element={<Suspense fallback={<LoadingFallback />}><PipelineLeads /></Suspense>} />
-        <Route path="/ventas/dashboard" element={<Suspense fallback={<LoadingFallback />}><DashboardComercial /></Suspense>} />
+        {!DEPOSITO_ONLY && (
+          <>
+            <Route path="/ventas/presupuestos" element={<Suspense fallback={<LoadingFallback />}><ConstructorPresupuestos /></Suspense>} />
+            <Route path="/ventas/constructor" element={<Suspense fallback={<LoadingFallback />}><ConstructorPresupuestos /></Suspense>} />
+            <Route path="/ventas/leads" element={<Suspense fallback={<LoadingFallback />}><PipelineLeads /></Suspense>} />
+            <Route path="/ventas/dashboard" element={<Suspense fallback={<LoadingFallback />}><DashboardComercial /></Suspense>} />
+            <Route path="/finanzas" element={<Suspense fallback={<LoadingFallback />}><FinanzasPage /></Suspense>} />
+            <Route path="/produccion/taller" element={<Suspense fallback={<LoadingFallback />}><DashboardTaller /></Suspense>} />
+            <Route path="/produccion/pendientes" element={<Suspense fallback={<LoadingFallback />}><ListaPendientes /></Suspense>} />
+            <Route path="/produccion/etiquetas-n12" element={<Suspense fallback={<LoadingFallback />}><EtiquetasN12 /></Suspense>} />
+            <Route path="/produccion/planos" element={<Suspense fallback={<LoadingFallback />}><GestionOrdenes /></Suspense>} />
+            <Route path="/produccion/ordenes" element={<Suspense fallback={<LoadingFallback />}><GestionOrdenes /></Suspense>} />
+            <Route path="/logistica/entregas" element={<Suspense fallback={<LoadingFallback />}><DashboardEntregas /></Suspense>} />
+            <Route path="/logistica/entregas-simple" element={<Suspense fallback={<LoadingFallback />}><DashboardEntregasSimplificado /></Suspense>} />
+            <Route path="/logistica/ordenes" element={<Suspense fallback={<LoadingFallback />}><OrdenesEntregaKanban /></Suspense>} />
+            <Route path="/logistica/supervision" element={<Suspense fallback={<LoadingFallback />}><SupervisionObraPage /></Suspense>} />
+          </>
+        )}
 
-        <Route path="/finanzas" element={<Suspense fallback={<LoadingFallback />}><FinanzasPage /></Suspense>} />
-
-        <Route path="/produccion/taller" element={<Suspense fallback={<LoadingFallback />}><DashboardTaller /></Suspense>} />
-        <Route path="/produccion/pendientes" element={<Suspense fallback={<LoadingFallback />}><ListaPendientes /></Suspense>} />
-        <Route path="/produccion/etiquetas-n12" element={<Suspense fallback={<LoadingFallback />}><EtiquetasN12 /></Suspense>} />
-        {/* <Route path="/produccion/aprobaciones" element={<MaestroAprobaciones />} /> */}
-        {/* <Route path="/produccion/acumulados" element={<TableroAcumulados />} /> */}
-        <Route path="/produccion/planos" element={<Suspense fallback={<LoadingFallback />}><GestionOrdenes /></Suspense>} />
-        <Route path="/produccion/ordenes" element={<Suspense fallback={<LoadingFallback />}><GestionOrdenes /></Suspense>} />
-
-        <Route path="/logistica/entregas" element={<Suspense fallback={<LoadingFallback />}><DashboardEntregas /></Suspense>} />
-        <Route path="/logistica/entregas-simple" element={<Suspense fallback={<LoadingFallback />}><DashboardEntregasSimplificado /></Suspense>} />
-        <Route path="/logistica/ordenes" element={<Suspense fallback={<LoadingFallback />}><OrdenesEntregaKanban /></Suspense>} />
-        <Route path="/logistica/supervision" element={<Suspense fallback={<LoadingFallback />}><SupervisionObraPage /></Suspense>} />
-        {/* <Route path="/logistica/feedback" element={<Suspense fallback={<LoadingFallback />}><CierreFeedback /></Suspense>} /> */}
-
+        <Route path="/inventario/dashboard" element={<Suspense fallback={<LoadingFallback />}><DashboardStock /></Suspense>} />
         <Route path="/inventario/gestion" element={<Suspense fallback={<LoadingFallback />}><GestionInventario /></Suspense>} />
         <Route path="/inventario/compras" element={<Suspense fallback={<LoadingFallback />}><ComprasProveedores /></Suspense>} />
         <Route path="/inventario/retazos" element={<Suspense fallback={<LoadingFallback />}><StockRetazos /></Suspense>} />
 
         <Route path="/admin/usuarios" element={<Suspense fallback={<LoadingFallback />}><UsuariosPage /></Suspense>} />
 
-        <Route path="*" element={<Navigate to="/produccion/taller" replace />} />
+        <Route path="*" element={<Navigate to="/inventario/dashboard" replace />} />
       </Route>
     </Routes>
   );

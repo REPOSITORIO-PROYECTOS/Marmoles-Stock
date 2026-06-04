@@ -1,3 +1,5 @@
+import { BRAND_LEGAL_NAME } from '../brand';
+
 /**
  * Normalización wa.me para Argentina (spec claude/06_ENVIO_WHATSAPP_PRESUPUESTO.txt).
  * Formato esperado por WhatsApp: código país sin + (ej. 5492641234567).
@@ -28,7 +30,7 @@ export function buildPresupuestoEnvioClienteMensaje(nombreCliente?: string): str
     'Por favor confirmar por este medio.',
     '',
     'Muchas Gracias',
-    'JF Marmoles y Granitos',
+    BRAND_LEGAL_NAME,
   ].join('\n');
 }
 
@@ -38,7 +40,7 @@ export function buildPresupuestoWhatsAppMessage(opts: {
   empresaNombre?: string;
 }): string {
   const nombre = (opts.nombreCliente || '').trim();
-  const emp = (opts.empresaNombre || 'Javier Flores Mármoles').trim();
+  const emp = (opts.empresaNombre || BRAND_LEGAL_NAME).trim();
   const corr =
     opts.correlativo && opts.correlativo > 0
       ? ` #${String(opts.correlativo).padStart(6, '0')}`

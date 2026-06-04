@@ -1,7 +1,7 @@
 {
-  "name": "marmoles-taup",
-  "version": "1.0.0",
-  "description": "Marmoles Taup - Sistema de Gestión para Marmolería",
+  "name": "dimarmi",
+  "version": "1.0.1",
+  "description": "MUNDO DI MARMI - Inventario y depósito",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -17,8 +17,8 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "com.marmoles-taup.app",
-    "productName": "Marmoles Taup",
+    "appId": "com.dimarmi.app",
+    "productName": "Mundo di Marmi",
     "copyright": "Copyright © 2026",
     "directories": {
       "output": "dist"
@@ -54,7 +54,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Marmoles Taup",
+      "shortcutName": "Mundo di Marmi",
       "deleteAppDataOnUninstall": false
     },
     "publish": {
