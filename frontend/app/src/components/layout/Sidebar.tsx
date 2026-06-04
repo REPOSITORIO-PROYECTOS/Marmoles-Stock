@@ -20,7 +20,8 @@ import {
   Ruler,
   Briefcase,
   ClipboardCheck,
-  Tag
+  Tag,
+  ShieldCheck,
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
@@ -70,6 +71,7 @@ export function Sidebar({ }: SidebarProps) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [username, setUsername] = useState('Usuario');
+  const [userRole, setUserRole] = useState('');
   const location = useLocation();
   const currentPath = location.pathname;
   const categories = Array.from(new Set(menuItems.map(item => item.category)));
@@ -89,8 +91,9 @@ export function Sidebar({ }: SidebarProps) {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const me = await get<{ username: string }>('/api/usuarios/me');
+        const me = await get<{ username: string; role: string }>('/api/usuarios/me');
         if (me?.username) setUsername(me.username);
+        if (me?.role) setUserRole(me.role);
       } catch {
         // Silencioso: si la sesión expiró, api.ts ya redirige a login.
       }
@@ -215,6 +218,34 @@ export function Sidebar({ }: SidebarProps) {
               </div>
             </div>
           ))}
+
+          {/* Sección Administración — solo visible para admin */}
+          {userRole === 'admin' && (
+            <div className="animate-slide-in">
+              <h3 className="text-sidebar-foreground/60 text-sm mb-3 px-3 uppercase tracking-wider">
+                Administración
+              </h3>
+              <div className="space-y-1">
+                <Link to="/admin/usuarios" onClick={handleLinkClick}>
+                  <Button
+                    variant={currentPath === '/admin/usuarios' ? 'default' : 'ghost'}
+                    className={`
+                      w-full justify-start gap-3 h-11 transition-all duration-200
+                      ${currentPath === '/admin/usuarios'
+                        ? 'bg-white text-primary shadow-md hover:bg-white/95'
+                        : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-white'
+                      }
+                    `}
+                  >
+                    <span className={currentPath === '/admin/usuarios' ? 'text-primary' : ''}>
+                      <ShieldCheck className="h-5 w-5" />
+                    </span>
+                    <span className="flex-1 text-left">Usuarios</span>
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          )}
         </nav>
 
         {/* Footer */}

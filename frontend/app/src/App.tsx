@@ -24,6 +24,7 @@ const EtiquetasN12 = lazy(() => import('./pages/produccion/EtiquetasN12').then(m
 const EncuestaPublica = lazy(() => import('./pages/logistica/EncuestaPublica').then(m => ({ default: m.EncuestaPublica })));
 const OrdenesEntregaKanban = lazy(() => import('./pages/logistica/OrdenesEntregaKanban').then(m => ({ default: m.OrdenesEntregaKanban })));
 const SupervisionObraPage = lazy(() => import('./pages/logistica/SupervisionObra').then(m => ({ default: m.SupervisionObraPage })));
+const UsuariosPage = lazy(() => import('./pages/admin/Usuarios').then(m => ({ default: m.Usuarios })));
 
 // Componente de carga
 const LoadingFallback = () => (
@@ -139,6 +140,8 @@ export default function App() {
         <Route path="/inventario/gestion" element={<Suspense fallback={<LoadingFallback />}><GestionInventario /></Suspense>} />
         <Route path="/inventario/compras" element={<Suspense fallback={<LoadingFallback />}><ComprasProveedores /></Suspense>} />
         <Route path="/inventario/retazos" element={<Suspense fallback={<LoadingFallback />}><StockRetazos /></Suspense>} />
+
+        <Route path="/admin/usuarios" element={<Suspense fallback={<LoadingFallback />}><UsuariosPage /></Suspense>} />
 
         <Route path="*" element={<Navigate to="/produccion/taller" replace />} />
       </Route>

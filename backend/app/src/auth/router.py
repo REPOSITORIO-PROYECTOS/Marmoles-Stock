@@ -73,6 +73,86 @@ def auth_logout(authorization: str = Header(None), db: Session = Depends(get_db)
     return {"ok": True}
 
 
+@router.get("/api/usuarios")
+def listar_usuarios(db: Session = Depends(get_db), current: UserModel = Depends(require_roles(["admin"]))):
+    usuarios = db.query(UserModel).order_by(UserModel.username).all()
+    now = datetime.utcnow()
+    return [
+        {
+            "id": u.id,
+            "username": u.username,
+            "email": u.email,
+            "role": u.role,
+            "active": u.active,
+            "locked": bool(u.locked_until and u.locked_until > now),
+        }
+        for u in usuarios
+    ]
+
+
+@router.put("/api/usuarios/{usuario_id}")
+def editar_usuario(
+    usuario_id: str,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current: UserModel = Depends(require_roles(["admin"])),
+):
+    u = db.query(UserModel).filter(UserModel.id == usuario_id).first()
+    if not u:
+        raise HTTPException(404, "Usuario no encontrado")
+    if u.id == current.id and payload.get("active") is False:
+        raise HTTPException(400, "No podés desactivar tu propio usuario")
+    if "role" in payload and payload["role"] in ("admin", "ventas", "deposito"):
+        u.role = payload["role"]
+    if "active" in payload and isinstance(payload["active"], bool):
+        u.active = payload["active"]
+    if "email" in payload and payload["email"]:
+        u.email = payload["email"]
+    db.commit()
+    logger.info(f"✏️ USUARIO EDITADO - Admin '{current.username}' editó '{u.username}'")
+    return {"id": u.id, "username": u.username, "email": u.email, "role": u.role, "active": u.active}
+
+
+@router.post("/api/usuarios/{usuario_id}/reset-password")
+def reset_password_usuario(
+    usuario_id: str,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current: UserModel = Depends(require_roles(["admin"])),
+):
+    u = db.query(UserModel).filter(UserModel.id == usuario_id).first()
+    if not u:
+        raise HTTPException(404, "Usuario no encontrado")
+    nueva = payload.get("nueva_password", "")
+    if len(nueva) < 6:
+        raise HTTPException(400, "La contraseña debe tener al menos 6 caracteres")
+    salt = os.urandom(16).hex()
+    u.password_hash = hash_password(nueva, salt)
+    u.password_salt = salt
+    u.failed_attempts = 0
+    u.locked_until = None
+    db.commit()
+    logger.info(f"🔑 RESET PASSWORD - Admin '{current.username}' reseteó contraseña de '{u.username}'")
+    return {"ok": True}
+
+
+@router.delete("/api/usuarios/{usuario_id}")
+def eliminar_usuario(
+    usuario_id: str,
+    db: Session = Depends(get_db),
+    current: UserModel = Depends(require_roles(["admin"])),
+):
+    u = db.query(UserModel).filter(UserModel.id == usuario_id).first()
+    if not u:
+        raise HTTPException(404, "Usuario no encontrado")
+    if u.id == current.id:
+        raise HTTPException(400, "No podés eliminar tu propio usuario")
+    u.active = False
+    db.commit()
+    logger.info(f"🗑️ USUARIO DESACTIVADO - Admin '{current.username}' desactivó '{u.username}'")
+    return {"ok": True}
+
+
 @router.post("/api/auth/change-password")
 def auth_change_password(
     payload: CambioPasswordPayload,
