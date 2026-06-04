@@ -1,6 +1,6 @@
 {
   "name": "dimarmi",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "MUNDO DI MARMI - Inventario y depósito",
   "main": "main.js",
   "scripts": {
