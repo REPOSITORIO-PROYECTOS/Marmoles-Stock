@@ -7,6 +7,7 @@ import { useLotes } from './hooks/useLotes';
 import { MaterialFilters } from './components/MaterialFilters';
 import { MaterialesTable } from './components/MaterialesTable';
 import { DeleteMaterialDialog } from './components/DeleteMaterialDialog';
+import { ImportarExcelPanel } from './components/ImportarExcelPanel';
 import { normalizarNombre } from './utils/materialUtils';
 import { Material } from './types';
 import { useProductosEstaticos } from './hooks/useProductosEstaticos';
@@ -29,6 +30,7 @@ export function GestionInventario() {
     setSearchTerm,
     handleToggleDisponibilidad,
     handleEliminarMaterial,
+    fetchMateriales,
   } = useMateriales();
 
   const {
@@ -92,6 +94,15 @@ export function GestionInventario() {
         <MaterialFilters
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
+        />
+
+        <ImportarExcelPanel
+          onImportado={async () => {
+            await fetchMateriales();
+            for (const m of allMateriales) {
+              await fetchLotesForMaterial(m);
+            }
+          }}
         />
 
         {/* Toggle de vista: Materiales vs Stock de Insumos */}

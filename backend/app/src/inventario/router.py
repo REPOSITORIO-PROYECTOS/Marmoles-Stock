@@ -1290,8 +1290,12 @@ async def importar_excel(
         tmp_path = Path(tmp.name)
 
     try:
-        scripts_dir = Path(__file__).resolve().parents[4] / "scripts"
-        sys.path.insert(0, str(scripts_dir.parent))
+        if getattr(sys, 'frozen', False):
+            backend_root = Path(sys._MEIPASS)
+        else:
+            backend_root = Path(__file__).resolve().parents[3]
+        if str(backend_root) not in sys.path:
+            sys.path.insert(0, str(backend_root))
 
         from scripts.import_control_inventario_xlsx import (
             _load_rows_control_bloques,
@@ -1309,6 +1313,17 @@ async def importar_excel(
 
         new_m_b, new_p = _import_bloques(db, rows_b, create_materials=create_materials, espesor_default=20)
         new_m_r, new_r = _import_remanentes(db, rows_r, create_materials=create_materials, espesor_default=20)
+
+        lote_ids = (
+            db.query(PlacaModel.lote_id)
+            .filter(PlacaModel.lote_id.isnot(None))
+            .distinct()
+            .all()
+        )
+        for (lote_id,) in lote_ids:
+            if lote_id:
+                _sincronizar_lote_desde_placas(db, lote_id)
+
         db.commit()
 
         return {

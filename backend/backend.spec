@@ -24,6 +24,8 @@ datas += [
     ('app',     'app'),
     ('alembic', 'alembic'),
 ]
+if Path('scripts').exists():
+    datas += [('scripts', 'scripts')]
 if Path('alembic.ini').exists():
     datas += [('alembic.ini', '.')]
 

@@ -126,3 +126,47 @@ export async function uploadFile(file: File): Promise<{ url: string; filename: s
   }
   return res.json();
 }
+
+export interface ImportExcelResult {
+  ok: boolean;
+  materiales_creados: number;
+  placas_creadas: number;
+  retazos_creados: number;
+  filas_bloques: number;
+  filas_remanentes: number;
+}
+
+export async function importInventarioExcel(
+  file: File,
+  options?: { wipe?: boolean; createMaterials?: boolean }
+): Promise<ImportExcelResult> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const params = new URLSearchParams();
+  if (options?.wipe) params.set('wipe', 'true');
+  if (options?.createMaterials !== false) params.set('create_materials', 'true');
+  const qs = params.toString();
+  const path = `/api/inventario/importar-excel${qs ? `?${qs}` : ''}`;
+
+  const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+  const url = `${baseUrl}${path}`;
+  const token =
+    typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const headers: Record<string, string> = {};
+  if (token && token !== 'null' && token !== 'undefined') {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const res = await fetch(url, { method: 'POST', headers, body: formData });
+  if (!res.ok) {
+    let detail = 'Error al importar Excel';
+    try {
+      const err = (await res.json()) as { detail?: string };
+      if (err.detail) detail = err.detail;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail);
+  }
+  return res.json() as Promise<ImportExcelResult>;
+}
