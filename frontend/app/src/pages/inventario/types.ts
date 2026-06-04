@@ -34,7 +34,17 @@ export interface Lote {
 export interface Placa {
     id: string;
     material_id: string;
+    material_nombre?: string;
+    lote_id?: string | null;
+    lote_codigo?: string | null;
+    codigo?: string | null;
     largo: number;
     ancho: number;
+    espesor?: number | null;
+    m2?: number;
+    ubicacion?: string | null;
     estado: string;
+    precio?: number | null;
+    reservado_por?: string | null;
+    plano_tecnico_id?: string | null;
 }

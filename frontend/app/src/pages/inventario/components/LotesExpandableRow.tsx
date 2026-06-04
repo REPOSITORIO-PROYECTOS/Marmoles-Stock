@@ -5,6 +5,7 @@ import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { patch } from '../../../api';
 import { notifySuccess, notifyError } from '../../../utils/notifications';
+import { PlacasLoteSection } from './PlacasLoteSection';
 
 interface LotesExpandableRowProps {
     material: Material;
@@ -396,6 +397,12 @@ export const LotesExpandableRow: React.FC<LotesExpandableRowProps> = ({
                                 <span className="italic leading-tight">"{l.notas}"</span>
                             </div>
                         )}
+
+                        <PlacasLoteSection
+                            loteId={l.id}
+                            codigoLote={l.codigo_lote || 'SIN_LOTE'}
+                            onLoteActualizado={onActualizarLote}
+                        />
 
                         <div className="mt-4 flex justify-end gap-2">
                             {editingLoteId === l.id ? (

@@ -15,6 +15,57 @@ from ...auth import require_roles, get_current_user
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
 
+
+def _placa_area_m2(p: PlacaModel) -> float:
+    if p.largo and p.ancho:
+        return (float(p.largo) * float(p.ancho)) / 1_000_000.0
+    return 0.0
+
+
+def _placa_disponible(p: PlacaModel) -> bool:
+    if (p.estado or "") != "disponible":
+        return False
+    if p.plano_tecnico_id or p.reservado_por:
+        return False
+    return True
+
+
+def _recalcular_stock_material(db: Session, material_id: str) -> None:
+    from sqlalchemy import func
+
+    total = (
+        db.query(func.sum(LoteModel.stock_actual))
+        .filter(LoteModel.material_id == material_id)
+        .scalar()
+        or 0.0
+    )
+    mat = db.query(MaterialModel).filter(MaterialModel.id == material_id).first()
+    if mat:
+        mat.stock_actual = round(float(total), 3)
+        db.add(mat)
+
+
+def _sincronizar_lote_desde_placas(db: Session, lote_id: str) -> dict:
+    from fastapi import HTTPException
+
+    lote = db.query(LoteModel).filter(LoteModel.id == lote_id).first()
+    if not lote:
+        raise HTTPException(status_code=404, detail="Lote no encontrado")
+    placas = db.query(PlacaModel).filter(PlacaModel.lote_id == lote_id).all()
+    disponibles = [p for p in placas if _placa_disponible(p)]
+    m2 = sum(_placa_area_m2(p) for p in disponibles)
+    lote.cantidad = len(disponibles)
+    lote.stock_actual = round(m2, 3)
+    db.add(lote)
+    _recalcular_stock_material(db, lote.material_id)
+    return {
+        "cantidad": lote.cantidad,
+        "stock_actual": lote.stock_actual,
+        "placas_disponibles": len(disponibles),
+        "placas_total": len(placas),
+    }
+
+
 @router.post("/api/materiales")
 def crear_material(payload: MaterialCreate, db: Session = Depends(get_db), user: UserModel = Depends(require_roles(["ventas", "admin"]))):
     m = MaterialModel(
@@ -429,6 +480,86 @@ def actualizar_placa(placaId: str, payload: dict | None = None, estado: str | No
             
     db.commit()
     return {"id": p.id}
+
+
+@router.delete("/api/placas/{placaId}")
+def eliminar_placa(
+    placaId: str,
+    db: Session = Depends(get_db),
+    user: UserModel = Depends(require_roles(["admin", "ventas"])),
+):
+    from fastapi import HTTPException
+
+    p = db.query(PlacaModel).filter(PlacaModel.id == placaId).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Placa no encontrada")
+    if not _placa_disponible(p):
+        raise HTTPException(
+            status_code=400,
+            detail="Solo se pueden eliminar placas disponibles sin reserva",
+        )
+    lote_id = p.lote_id
+    db.delete(p)
+    db.flush()
+    sync = None
+    if lote_id:
+        sync = _sincronizar_lote_desde_placas(db, lote_id)
+    db.commit()
+    return {"ok": True, "id": placaId, "lote": sync}
+
+
+@router.post("/api/lotes/{loteId}/despachar-placas")
+def despachar_placas_lote(
+    loteId: str,
+    db: Session = Depends(get_db),
+    user: UserModel = Depends(require_roles(["admin", "ventas"])),
+):
+    from fastapi import HTTPException
+
+    lote = db.query(LoteModel).filter(LoteModel.id == loteId).first()
+    if not lote:
+        raise HTTPException(status_code=404, detail="Lote no encontrado")
+    placas = (
+        db.query(PlacaModel)
+        .filter(PlacaModel.lote_id == loteId, PlacaModel.estado == "disponible")
+        .all()
+    )
+    despachadas = 0
+    m2_despachado = 0.0
+    for p in placas:
+        if not _placa_disponible(p):
+            continue
+        p.estado = "despachado"
+        m2_despachado += _placa_area_m2(p)
+        db.add(p)
+        despachadas += 1
+    if despachadas > 0:
+        mv = MovModel(
+            tipo="despacho_placas",
+            proveedor=f"lote:{lote.codigo_lote}",
+            material_id=lote.material_id,
+            cantidad=despachadas,
+            monto=round(m2_despachado, 3),
+            fecha=datetime.now().strftime("%Y-%m-%d"),
+            estado="activo",
+        )
+        db.add(mv)
+    db.flush()
+    sync = _sincronizar_lote_desde_placas(db, loteId)
+    db.commit()
+    return {"despachadas": despachadas, "m2_despachado": round(m2_despachado, 3), **sync}
+
+
+@router.post("/api/lotes/{loteId}/sincronizar-placas")
+def sincronizar_placas_lote(
+    loteId: str,
+    db: Session = Depends(get_db),
+    user: UserModel = Depends(require_roles(["admin", "ventas"])),
+):
+    sync = _sincronizar_lote_desde_placas(db, loteId)
+    db.commit()
+    return sync
+
 
 @router.post("/api/inventario/retazos")
 def crear_retazo(payload: RetazoCreate, db: Session = Depends(get_db)):
