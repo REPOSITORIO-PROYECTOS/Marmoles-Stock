@@ -1,5 +1,5 @@
 from datetime import datetime
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 from ..schemas import MaterialCreate, CompraProveedor, RetazoUpdate, VentaRetazo, ProveedorCreate, ProveedorUpdate, LoteCreate, LoteUpdate, RetazoCreate, PlacaCreate, ArticuloCreate, ArticuloUpdate
 from ...db import get_db
@@ -1303,7 +1303,7 @@ def exportar_excel(
 
 @router.post("/api/inventario/importar-excel")
 async def importar_excel(
-    file: "UploadFile",
+    file: UploadFile = File(...),
     wipe: bool = False,
     create_materials: bool = True,
     db: Session = Depends(get_db),
@@ -1317,9 +1317,8 @@ async def importar_excel(
     import tempfile
     import sys
     from pathlib import Path
-    from fastapi import HTTPException, UploadFile
 
-    if not file.filename.endswith((".xlsx", ".xls")):
+    if not file.filename or not file.filename.endswith((".xlsx", ".xls")):
         raise HTTPException(400, "El archivo debe ser .xlsx")
 
     contents = await file.read()

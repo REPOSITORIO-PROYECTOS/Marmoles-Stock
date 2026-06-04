@@ -163,8 +163,12 @@ export async function importInventarioExcel(
   if (!res.ok) {
     let detail = 'Error al importar Excel';
     try {
-      const err = (await res.json()) as { detail?: string };
-      if (err.detail) detail = err.detail;
+      const err = (await res.json()) as { detail?: string | Array<{ msg?: string }> };
+      if (Array.isArray(err.detail)) {
+        detail = err.detail.map((d) => d.msg ?? '').filter(Boolean).join('. ') || detail;
+      } else if (typeof err.detail === 'string') {
+        detail = err.detail;
+      }
     } catch {
       /* ignore */
     }
@@ -206,4 +210,11 @@ export async function downloadInventarioExcel(): Promise<void> {
   anchor.download = filename;
   anchor.click();
   URL.revokeObjectURL(objectUrl);
+}
+
+/** Cierra sesión: borra token y vuelve al login. */
+export function logoutSession(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('token');
+  window.location.href = '/login';
 }

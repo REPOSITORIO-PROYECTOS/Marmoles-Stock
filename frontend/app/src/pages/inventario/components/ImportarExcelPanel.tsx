@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Download, FileSpreadsheet, Upload } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Label } from '../../../components/ui/label';
-import { get, importInventarioExcel, downloadInventarioExcel } from '../../../api';
+import { importInventarioExcel, downloadInventarioExcel } from '../../../api';
 import { toast } from 'sonner';
 
 interface ImportarExcelPanelProps {
@@ -12,24 +12,10 @@ interface ImportarExcelPanelProps {
 
 export const ImportarExcelPanel: React.FC<ImportarExcelPanelProps> = ({ onImportado }) => {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [archivo, setArchivo] = useState<File | null>(null);
   const [reemplazar, setReemplazar] = useState(false);
   const [descargando, setDescargando] = useState(false);
   const [importando, setImportando] = useState(false);
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const me = await get<{ role?: string }>('/api/usuarios/me');
-        setIsAdmin(me?.role === 'admin');
-      } catch {
-        setIsAdmin(false);
-      }
-    })();
-  }, []);
-
-  if (!isAdmin) return null;
 
   const handleDescargar = async () => {
     setDescargando(true);
@@ -79,7 +65,7 @@ export const ImportarExcelPanel: React.FC<ImportarExcelPanelProps> = ({ onImport
   };
 
   return (
-    <Card className="border-border mb-6">
+    <Card className="border-border">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <FileSpreadsheet className="h-5 w-5 text-primary" />

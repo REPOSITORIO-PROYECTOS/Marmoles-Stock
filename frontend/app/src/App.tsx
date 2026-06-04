@@ -20,6 +20,7 @@ const GestionInventario = lazy(() => import('./pages/inventario/GestionInventari
 const ComprasProveedores = lazy(() => import('./pages/inventario/ComprasProveedoresRefactored').then(m => ({ default: m.ComprasProveedoresRefactored })));
 const StockRetazos = lazy(() => import('./pages/inventario/StockRetazos').then(m => ({ default: m.StockRetazos })));
 const DashboardStock = lazy(() => import('./pages/inventario/DashboardStock').then(m => ({ default: m.DashboardStock })));
+const InventarioExcel = lazy(() => import('./pages/inventario/InventarioExcel').then(m => ({ default: m.InventarioExcel })));
 const GestionOrdenes = lazy(() => import('./pages/produccion/GestionOrdenes').then(m => ({ default: m.GestionOrdenes })));
 const EtiquetasN12 = lazy(() => import('./pages/produccion/EtiquetasN12').then(m => ({ default: m.EtiquetasN12 })));
 const EncuestaPublica = lazy(() => import('./pages/logistica/EncuestaPublica').then(m => ({ default: m.EncuestaPublica })));
@@ -140,6 +141,7 @@ export default function App() {
 
         <Route path="/inventario/dashboard" element={<Suspense fallback={<LoadingFallback />}><DashboardStock /></Suspense>} />
         <Route path="/inventario/gestion" element={<Suspense fallback={<LoadingFallback />}><GestionInventario /></Suspense>} />
+        <Route path="/inventario/excel" element={<Suspense fallback={<LoadingFallback />}><InventarioExcel /></Suspense>} />
         <Route path="/inventario/compras" element={<Suspense fallback={<LoadingFallback />}><ComprasProveedores /></Suspense>} />
         <Route path="/inventario/retazos" element={<Suspense fallback={<LoadingFallback />}><StockRetazos /></Suspense>} />
 

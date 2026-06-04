@@ -22,6 +22,8 @@ import {
   ClipboardCheck,
   Tag,
   ShieldCheck,
+  FileSpreadsheet,
+  LogOut,
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
@@ -36,7 +38,7 @@ import {
 } from '../../brand';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { get, post } from '../../api';
+import { get, post, logoutSession } from '../../api';
 import { toast } from 'sonner';
 
 interface SidebarProps { }
@@ -46,6 +48,7 @@ interface MenuItem {
   label: string;
   icon: ReactNode;
   category: string;
+  adminOnly?: boolean;
 }
 
 const menuItems: MenuItem[] = [
@@ -67,6 +70,7 @@ const menuItems: MenuItem[] = [
 
   { path: '/inventario/dashboard', label: 'Dashboard', icon: <BarChart3 className="h-5 w-5" />, category: INVENTORY_MENU_CATEGORY },
   { path: '/inventario/gestion', label: 'Gestión Inventario', icon: <Package className="h-5 w-5" />, category: INVENTORY_MENU_CATEGORY },
+  { path: '/inventario/excel', label: 'Importar / Exportar Excel', icon: <FileSpreadsheet className="h-5 w-5" />, category: INVENTORY_MENU_CATEGORY, adminOnly: true },
   { path: '/inventario/compras', label: 'Compras y Proveedores', icon: <ShoppingCart className="h-5 w-5" />, category: INVENTORY_MENU_CATEGORY },
   { path: '/inventario/retazos', label: 'Stock de Retazos', icon: <Layers className="h-5 w-5" />, category: INVENTORY_MENU_CATEGORY },
 ];
@@ -85,6 +89,7 @@ export function Sidebar({ }: SidebarProps) {
   const location = useLocation();
   const currentPath = location.pathname;
   const visibleMenuItems = menuItems.filter((item) => {
+    if (item.adminOnly && userRole !== 'admin') return false;
     if (DEPOSITO_ONLY || userRole === 'deposito') {
       return item.category === INVENTORY_MENU_CATEGORY;
     }
@@ -142,6 +147,11 @@ export function Sidebar({ }: SidebarProps) {
     } finally {
       setIsSavingPassword(false);
     }
+  };
+
+  const handleLogout = () => {
+    setIsUserMenuOpen(false);
+    logoutSession();
   };
 
   return (
@@ -307,6 +317,15 @@ export function Sidebar({ }: SidebarProps) {
               </Button>
             </div>
           )}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleLogout}
+            className="w-full mb-3 gap-2 border-sidebar-border/80 bg-white/10 text-sidebar-foreground hover:bg-white/20 hover:text-white"
+          >
+            <LogOut className="h-4 w-4" />
+            Cerrar sesión
+          </Button>
           <div className="bg-sidebar-accent rounded-lg p-4">
             <p className="text-sidebar-foreground/80 text-sm">
               {BRAND_MONOGRAM} · {BRAND_TAGLINE}
