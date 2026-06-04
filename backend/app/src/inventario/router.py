@@ -1128,3 +1128,68 @@ def eliminar_articulo(articuloId: str, db: Session = Depends(get_db), user: User
     a.fecha_actualizacion = datetime.now().isoformat()
     db.commit()
     return {"id": a.id, "status": "deactivated"}
+
+
+# ── Importación Excel ────────────────────────────────────────────────────────
+
+@router.post("/api/inventario/importar-excel")
+async def importar_excel(
+    file: "UploadFile",
+    wipe: bool = False,
+    create_materials: bool = True,
+    db: Session = Depends(get_db),
+    user: UserModel = Depends(require_roles(["admin"])),
+):
+    """
+    Importa inventario desde un archivo Excel (.xlsx).
+    Hojas esperadas: 'Control de Bloques' y 'Inventario Remanentes'.
+    wipe=true borra placas y retazos existentes antes de importar.
+    """
+    import tempfile
+    import sys
+    from pathlib import Path
+    from fastapi import HTTPException, UploadFile
+
+    if not file.filename.endswith((".xlsx", ".xls")):
+        raise HTTPException(400, "El archivo debe ser .xlsx")
+
+    contents = await file.read()
+    with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+        tmp.write(contents)
+        tmp_path = Path(tmp.name)
+
+    try:
+        scripts_dir = Path(__file__).resolve().parents[4] / "scripts"
+        sys.path.insert(0, str(scripts_dir.parent))
+
+        from scripts.import_control_inventario_xlsx import (
+            _load_rows_control_bloques,
+            _load_rows_remanentes,
+            _wipe_inventory,
+            _import_bloques,
+            _import_remanentes,
+        )
+
+        rows_b = _load_rows_control_bloques(tmp_path, "Control de Bloques")
+        rows_r = _load_rows_remanentes(tmp_path, "Inventario Remanentes")
+
+        if wipe:
+            _wipe_inventory(db, wipe_lotes=False)
+
+        new_m_b, new_p = _import_bloques(db, rows_b, create_materials=create_materials, espesor_default=20)
+        new_m_r, new_r = _import_remanentes(db, rows_r, create_materials=create_materials, espesor_default=20)
+        db.commit()
+
+        return {
+            "ok": True,
+            "materiales_creados": new_m_b + new_m_r,
+            "placas_creadas": new_p,
+            "retazos_creados": new_r,
+            "filas_bloques": len(rows_b),
+            "filas_remanentes": len(rows_r),
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(500, f"Error al importar: {e}")
+    finally:
+        tmp_path.unlink(missing_ok=True)

@@ -1,0 +1,67 @@
+{
+  "name": "marmoles-taup",
+  "version": "1.0.0",
+  "description": "Marmoles Taup - Sistema de Gestión para Marmolería",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder --win --publish=never",
+    "publish": "electron-builder --win --publish=always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.marmoles-taup.app",
+    "productName": "Marmoles Taup",
+    "copyright": "Copyright © 2026",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "splash.html"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend/dist/backend/",
+        "to": "backend/",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../frontend/app/build/",
+        "to": "frontend/",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "../frontend/app/build/marmol.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Marmoles Taup",
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "REPOSITORIO-PROYECTOS",
+      "repo": "Marmoles-Stock",
+      "releaseType": "release"
+    }
+  }
+}

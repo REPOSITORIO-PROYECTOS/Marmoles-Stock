@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
@@ -91,6 +91,11 @@ def api_health():
 
 @app.get("/")
 def root():
+    frontend_dir = os.getenv("FRONTEND_DIST_DIR", "").strip()
+    if frontend_dir:
+        index = os.path.join(frontend_dir, "index.html")
+        if os.path.isfile(index):
+            return FileResponse(index)
     return {"service": "mundo-di-marmi", "message": "API operativa"}
 
 def _ensure_crm_columns():
@@ -140,7 +145,7 @@ def _ensure_crm_columns():
                 conn.execute(text("ALTER TABLE retazos ADD COLUMN geometria_json TEXT"))
             if "area_mm2" not in retazos_cols:
                 conn.execute(text("ALTER TABLE retazos ADD COLUMN area_mm2 FLOAT"))
-            
+
             # --- INVENTARIO & LOTES ---
             lotes_cols = {c["name"] for c in insp.get_columns("lotes")}
             if "cantidad" not in lotes_cols:
@@ -151,7 +156,7 @@ def _ensure_crm_columns():
                 conn.execute(text("ALTER TABLE lotes ADD COLUMN ancho_m FLOAT"))
             if "largo_m" not in lotes_cols:
                 conn.execute(text("ALTER TABLE lotes ADD COLUMN largo_m FLOAT"))
-            
+
             compras_cols = {c["name"] for c in insp.get_columns("compras")}
             if "lote_id" not in compras_cols:
                 conn.execute(text("ALTER TABLE compras ADD COLUMN lote_id VARCHAR(36)"))
@@ -181,7 +186,7 @@ def _ensure_crm_columns():
                 conn.execute(text("ALTER TABLE placas ADD COLUMN reservado_por VARCHAR(36)"))
             if "reservado_hasta" not in placas_cols:
                 conn.execute(text("ALTER TABLE placas ADD COLUMN reservado_hasta VARCHAR(64)"))
-            
+
             # --- PRESUPUESTOS ---
             presupuestos_cols = {c["name"] for c in insp.get_columns("presupuestos")}
             if "coordenadas" not in presupuestos_cols:
@@ -266,27 +271,17 @@ def _ensure_crm_columns():
     except Exception as e:
         logger.error(f"Error ensuring CRM columns: {e}")
 
-def _ensure_bootstrap() -> None:
+def _ensure_bootstrap():
     Base.metadata.create_all(bind=engine)
     _ensure_crm_columns()
-    admin_username = (os.getenv("ADMIN_USERNAME") or "admin").strip() or "admin"
-    admin_password = os.getenv("ADMIN_PASSWORD") or "admin"
-    admin_email = (os.getenv("ADMIN_EMAIL") or "admin@example.com").strip() or "admin@example.com"
-    db: Session | None = None
+    db = None
     try:
         db = SessionLocal()
-        admin = db.query(User).filter(User.username == admin_username).first()
+        admin = db.query(User).filter(User.username == "admin").first()
         if not admin:
             salt = os.urandom(16).hex()
-            pwd = hash_password(admin_password, salt)
-            admin = User(
-                username=admin_username,
-                email=admin_email,
-                password_hash=pwd,
-                password_salt=salt,
-                role="admin",
-                active=True,
-            )
+            pwd = hash_password("admin", salt)
+            admin = User(username="admin", email="admin@example.com", password_hash=pwd, password_salt=salt, role="admin", active=True)
             db.add(admin)
             db.commit()
     finally:
@@ -318,3 +313,15 @@ if _commercial_modules_enabled():
     app.include_router(encuestas_router)
 else:
     logger.info("Modo inventario: routers comerciales (CRM, presupuestos, finanzas, etc.) desactivados.")
+
+# ── Modo desktop: servir frontend React desde FastAPI ────────────────────────
+# Activado cuando Electron pasa FRONTEND_DIST_DIR al proceso hijo.
+_frontend_dir = os.getenv("FRONTEND_DIST_DIR", "").strip()
+if _frontend_dir and os.path.isdir(_frontend_dir):
+    _assets_dir = os.path.join(_frontend_dir, "assets")
+    if os.path.isdir(_assets_dir):
+        app.mount("/assets", StaticFiles(directory=_assets_dir), name="spa_assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def _spa_catch_all(full_path: str):
+        return FileResponse(os.path.join(_frontend_dir, "index.html"))
