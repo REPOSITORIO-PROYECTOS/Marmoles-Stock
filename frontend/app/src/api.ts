@@ -131,7 +131,9 @@ export interface ImportExcelResult {
   ok: boolean;
   materiales_creados: number;
   placas_creadas: number;
+  placas_actualizadas?: number;
   retazos_creados: number;
+  retazos_actualizados?: number;
   filas_bloques: number;
   filas_remanentes: number;
 }
@@ -169,4 +171,39 @@ export async function importInventarioExcel(
     throw new Error(detail);
   }
   return res.json() as Promise<ImportExcelResult>;
+}
+
+export async function downloadInventarioExcel(): Promise<void> {
+  const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+  const url = `${baseUrl}/api/inventario/exportar-excel`;
+  const token =
+    typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const headers: Record<string, string> = {};
+  if (token && token !== 'null' && token !== 'undefined') {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const res = await fetch(url, { method: 'GET', headers });
+  if (!res.ok) {
+    let detail = 'Error al descargar Excel';
+    try {
+      const err = (await res.json()) as { detail?: string };
+      if (err.detail) detail = err.detail;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail);
+  }
+
+  const blob = await res.blob();
+  const dispo = res.headers.get('Content-Disposition') ?? '';
+  const match = /filename="?([^";]+)"?/.exec(dispo);
+  const filename = match?.[1] ?? `Control_Inventario_MDM_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.xlsx`;
+
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = objectUrl;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(objectUrl);
 }

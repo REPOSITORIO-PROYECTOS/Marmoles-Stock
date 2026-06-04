@@ -1263,6 +1263,44 @@ def eliminar_articulo(articuloId: str, db: Session = Depends(get_db), user: User
 
 # ── Importación Excel ────────────────────────────────────────────────────────
 
+def _import_scripts_backend_root() -> "Path":
+    import sys
+    from pathlib import Path
+
+    if getattr(sys, "frozen", False):
+        return Path(sys._MEIPASS)
+    return Path(__file__).resolve().parents[3]
+
+
+@router.get("/api/inventario/exportar-excel")
+def exportar_excel(
+    db: Session = Depends(get_db),
+    user: UserModel = Depends(require_roles(["admin"])),
+):
+    """Descarga inventario actual en formato Excel compatible con la importación."""
+    import sys
+    from fastapi import HTTPException
+    from fastapi.responses import Response
+
+    backend_root = _import_scripts_backend_root()
+    if str(backend_root) not in sys.path:
+        sys.path.insert(0, str(backend_root))
+
+    try:
+        from scripts.import_control_inventario_xlsx import export_inventario_workbook
+
+        data = export_inventario_workbook(db)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al exportar: {e}")
+
+    filename = f"Control_Inventario_MDM_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    return Response(
+        content=data,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.post("/api/inventario/importar-excel")
 async def importar_excel(
     file: "UploadFile",
@@ -1293,7 +1331,7 @@ async def importar_excel(
         if getattr(sys, 'frozen', False):
             backend_root = Path(sys._MEIPASS)
         else:
-            backend_root = Path(__file__).resolve().parents[3]
+            backend_root = _import_scripts_backend_root()
         if str(backend_root) not in sys.path:
             sys.path.insert(0, str(backend_root))
 
@@ -1311,8 +1349,9 @@ async def importar_excel(
         if wipe:
             _wipe_inventory(db, wipe_lotes=False)
 
-        new_m_b, new_p = _import_bloques(db, rows_b, create_materials=create_materials, espesor_default=20)
-        new_m_r, new_r = _import_remanentes(db, rows_r, create_materials=create_materials, espesor_default=20)
+        upd_p = 0
+        new_m_b, new_p, upd_p = _import_bloques(db, rows_b, create_materials=create_materials, espesor_default=20)
+        new_m_r, new_r, upd_r = _import_remanentes(db, rows_r, create_materials=create_materials, espesor_default=20)
 
         lote_ids = (
             db.query(PlacaModel.lote_id)
@@ -1330,7 +1369,9 @@ async def importar_excel(
             "ok": True,
             "materiales_creados": new_m_b + new_m_r,
             "placas_creadas": new_p,
+            "placas_actualizadas": upd_p,
             "retazos_creados": new_r,
+            "retazos_actualizados": upd_r,
             "filas_bloques": len(rows_b),
             "filas_remanentes": len(rows_r),
         }

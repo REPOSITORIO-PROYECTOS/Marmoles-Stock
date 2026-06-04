@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { FileSpreadsheet, Upload } from 'lucide-react';
+import { Download, FileSpreadsheet, Upload } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Label } from '../../../components/ui/label';
-import { get, importInventarioExcel } from '../../../api';
+import { get, importInventarioExcel, downloadInventarioExcel } from '../../../api';
 import { toast } from 'sonner';
 
 interface ImportarExcelPanelProps {
@@ -15,6 +15,7 @@ export const ImportarExcelPanel: React.FC<ImportarExcelPanelProps> = ({ onImport
   const [isAdmin, setIsAdmin] = useState(false);
   const [archivo, setArchivo] = useState<File | null>(null);
   const [reemplazar, setReemplazar] = useState(false);
+  const [descargando, setDescargando] = useState(false);
   const [importando, setImportando] = useState(false);
 
   useEffect(() => {
@@ -30,6 +31,18 @@ export const ImportarExcelPanel: React.FC<ImportarExcelPanelProps> = ({ onImport
 
   if (!isAdmin) return null;
 
+  const handleDescargar = async () => {
+    setDescargando(true);
+    try {
+      await downloadInventarioExcel();
+      toast.success('Excel descargado. Editá y volvé a subirlo.');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo descargar');
+    } finally {
+      setDescargando(false);
+    }
+  };
+
   const handleImportar = async () => {
     if (!archivo) {
       toast.error('Elegí un archivo .xlsx');
@@ -38,7 +51,7 @@ export const ImportarExcelPanel: React.FC<ImportarExcelPanelProps> = ({ onImport
     if (
       reemplazar &&
       !confirm(
-        '¿Reemplazar placas y retazos existentes antes de importar? Los lotes y materiales se mantienen.'
+        '¿Reemplazar todas las placas y retazos con el contenido del Excel? (Recomendado tras corregir el archivo descargado.)'
       )
     ) {
       return;
@@ -50,8 +63,10 @@ export const ImportarExcelPanel: React.FC<ImportarExcelPanelProps> = ({ onImport
         wipe: reemplazar,
         createMaterials: true,
       });
+      const upd = res.placas_actualizadas ?? 0;
+      const updR = res.retazos_actualizados ?? 0;
       toast.success(
-        `Importado: ${res.placas_creadas} placas, ${res.retazos_creados} retazos, ${res.materiales_creados} materiales nuevos`
+        `Importado: ${res.placas_creadas} placas nuevas, ${upd} actualizadas · ${res.retazos_creados} retazos nuevos, ${updR} actualizados`
       );
       setArchivo(null);
       if (inputRef.current) inputRef.current.value = '';
@@ -68,18 +83,44 @@ export const ImportarExcelPanel: React.FC<ImportarExcelPanelProps> = ({ onImport
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <FileSpreadsheet className="h-5 w-5 text-primary" />
-          Importar desde Excel
+          Excel: descargar, corregir e importar
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          Archivo tipo{' '}
-          <strong>Control_Inventario_Marmoleria 2026.xlsx</strong> con hojas{' '}
-          <em>Control de Bloques</em> e <em>Inventario Remanentes</em>.
+        <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
+          <li>
+            <strong>Descargar</strong> el inventario actual (incluye columna <em>Codigo</em> por placa).
+          </li>
+          <li>Editar medidas, materiales o bloques en Excel.</li>
+          <li>
+            <strong>Importar</strong> el archivo. Por defecto fusiona con lo existente (coincide por{' '}
+            <em>nombre de material</em>, bloque y medidas).
+          </li>
+        </ol>
+
+        <p className="text-sm text-muted-foreground rounded-md border border-dashed p-3 bg-muted/30">
+          <strong>Sin reemplazar:</strong> actualiza filas que coinciden por nombre de material + bloque +
+          largo/alto (o por columna <em>Codigo</em> si está). Solo agrega filas nuevas que no existían.
+          <br />
+          <strong>Con reemplazar:</strong> borra placas y retazos y deja el inventario igual al Excel.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={descargando}
+            onClick={handleDescargar}
+            className="gap-2"
+          >
+            <Download className="h-4 w-4" />
+            {descargando ? 'Descargando…' : 'Descargar inventario (.xlsx)'}
+          </Button>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-end border-t border-dashed pt-4">
           <div className="flex-1 space-y-2">
-            <Label htmlFor="excel-inventario">Archivo .xlsx</Label>
+            <Label htmlFor="excel-inventario">Subir Excel corregido</Label>
             <input
               ref={inputRef}
               id="excel-inventario"
@@ -99,14 +140,19 @@ export const ImportarExcelPanel: React.FC<ImportarExcelPanelProps> = ({ onImport
             {importando ? 'Importando…' : 'Importar'}
           </Button>
         </div>
-        <label className="flex items-center gap-2 text-sm cursor-pointer">
+
+        <label className="flex items-start gap-2 text-sm cursor-pointer">
           <input
             type="checkbox"
             checked={reemplazar}
             onChange={(e) => setReemplazar(e.target.checked)}
-            className="rounded border-border"
+            className="rounded border-border mt-0.5"
           />
-          Reemplazar placas y retazos antes de importar (no borra lotes ni materiales)
+          <span>
+            Reemplazar placas y retazos antes de importar (inventario = Excel). Desmarcado: fusiona por{' '}
+            <em>nombre de material</em>, bloque y medidas; también respeta <em>Codigo</em> si viene en el
+            archivo.
+          </span>
         </label>
       </CardContent>
     </Card>

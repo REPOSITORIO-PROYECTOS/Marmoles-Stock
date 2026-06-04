@@ -5,7 +5,7 @@
 :root {
   --font-size: 16px;
 
-  /* Paleta Azul y Blanco Moderna */
+  /* Paleta Turquesa y Blanco Moderna */
   --background: #F8FAFC;
   --foreground: #1E293B;
 
@@ -15,16 +15,16 @@
   --popover: #FFFFFF;
   --popover-foreground: #1E293B;
 
-  --primary: #2563EB;
+  --primary: #0D9488;
   --primary-foreground: #FFFFFF;
 
-  --secondary: #E0F2FE;
-  --secondary-foreground: #0369A1;
+  --secondary: #CCFBF1;
+  --secondary-foreground: #0F766E;
 
   --muted: #F1F5F9;
   --muted-foreground: #64748B;
 
-  --accent: #3B82F6;
+  --accent: #14B8A6;
   --accent-foreground: #FFFFFF;
 
   --destructive: #EF4444;
@@ -41,30 +41,30 @@
   --input-background: #FFFFFF;
   --switch-background: #CBD5E1;
 
-  --ring: #3B82F6;
+  --ring: #14B8A6;
 
   --font-weight-medium: 500;
   --font-weight-normal: 400;
   --font-weight-semibold: 600;
 
-  /* Charts - Tonos de azul */
-  --chart-1: #3B82F6;
-  --chart-2: #60A5FA;
-  --chart-3: #93C5FD;
-  --chart-4: #BFDBFE;
-  --chart-5: #2563EB;
+  /* Charts - Tonos turquesa */
+  --chart-1: #14B8A6;
+  --chart-2: #2DD4BF;
+  --chart-3: #5EEAD4;
+  --chart-4: #99F6E4;
+  --chart-5: #0D9488;
 
   --radius: 0.75rem;
 
-  /* Sidebar - Azul elegante */
-  --sidebar: #1E40AF;
+  /* Sidebar - Turquesa elegante */
+  --sidebar: #0F766E;
   --sidebar-foreground: #FFFFFF;
-  --sidebar-primary: #3B82F6;
+  --sidebar-primary: #14B8A6;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #1E3A8A;
+  --sidebar-accent: #115E59;
   --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: #1E3A8A;
-  --sidebar-ring: #60A5FA;
+  --sidebar-border: #115E59;
+  --sidebar-ring: #2DD4BF;
 }
 
 .dark {
@@ -77,16 +77,16 @@
   --popover: #1E293B;
   --popover-foreground: #F8FAFC;
 
-  --primary: #3B82F6;
+  --primary: #14B8A6;
   --primary-foreground: #FFFFFF;
 
-  --secondary: #1E3A8A;
-  --secondary-foreground: #BFDBFE;
+  --secondary: #115E59;
+  --secondary-foreground: #99F6E4;
 
   --muted: #334155;
   --muted-foreground: #94A3B8;
 
-  --accent: #2563EB;
+  --accent: #0D9488;
   --accent-foreground: #FFFFFF;
 
   --destructive: #EF4444;
@@ -97,22 +97,22 @@
   --input-background: #1E293B;
   --switch-background: #475569;
 
-  --ring: #60A5FA;
+  --ring: #2DD4BF;
 
-  --chart-1: #60A5FA;
-  --chart-2: #3B82F6;
-  --chart-3: #2563EB;
-  --chart-4: #1D4ED8;
-  --chart-5: #93C5FD;
+  --chart-1: #2DD4BF;
+  --chart-2: #14B8A6;
+  --chart-3: #0D9488;
+  --chart-4: #0F766E;
+  --chart-5: #5EEAD4;
 
   --sidebar: #1E293B;
   --sidebar-foreground: #F8FAFC;
-  --sidebar-primary: #3B82F6;
+  --sidebar-primary: #14B8A6;
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: #334155;
   --sidebar-accent-foreground: #F8FAFC;
   --sidebar-border: #334155;
-  --sidebar-ring: #60A5FA;
+  --sidebar-ring: #2DD4BF;
 }
 
 @theme inline {
@@ -238,7 +238,7 @@ html {
   }
 }
 
-/* Custom scrollbar - Azul moderno */
+/* Custom scrollbar - Turquesa moderno */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;

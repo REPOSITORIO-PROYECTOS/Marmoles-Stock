@@ -59,6 +59,14 @@ def _norm_txt(s: str) -> str:
     return " ".join(s.lower().split())
 
 
+def _norm_bloque(b: str | None) -> str:
+    return re.sub(r"\s+", "", str(b or "SIN-BLOQUE")).upper()
+
+
+def _material_norm_key(nombre: str) -> str:
+    return _norm_txt(nombre.strip())
+
+
 def _parse_mm_from_material(text: str | None) -> int | None:
     if not text:
         return None
@@ -134,6 +142,8 @@ def _load_rows_control_bloques(path: Path, sheet: str) -> list[dict[str, Any]]:
                     header_map["valor_m2"] = j
                 elif "observ" in key:
                     header_map["obs"] = j
+                elif "codigo" in key or "código" in key:
+                    header_map["codigo"] = j
             break
     if header_idx is None:
         wb.close()
@@ -168,6 +178,7 @@ def _load_rows_control_bloques(path: Path, sheet: str) -> list[dict[str, Any]]:
                 "m2": get(row, "m2"),
                 "valor_m2": get(row, "valor_m2"),
                 "obs": get(row, "obs"),
+                "codigo": str(get(row, "codigo") or "").strip(),
             }
         )
     wb.close()
@@ -267,25 +278,133 @@ def _load_rows_remanentes(path: Path, sheet: str) -> list[dict[str, Any]]:
 
 
 def _find_material(db: Session, nombre: str) -> Material | None:
+    """Empareja material existente priorizando nombre normalizado (evita duplicados al importar)."""
     n = nombre.strip()
     if not n:
         return None
     m = db.query(Material).filter(Material.nombre == n).first()
     if m:
         return m
-    cand = (
+    m = db.query(Material).filter(Material.nombre.ilike(n)).first()
+    if m:
+        return m
+    key = _material_norm_key(n)
+    if key:
+        for mat in db.query(Material).filter(Material.activo.is_(True)).all():
+            if _material_norm_key(mat.nombre) == key:
+                return mat
+    candidates = (
         db.query(Material)
         .filter(or_(Material.nombre.ilike(f"%{n[:50]}%"), Material.nombre.ilike(f"%{n[:25]}%")))
-        .first()
+        .limit(5)
+        .all()
     )
-    if cand:
-        return cand
+    if len(candidates) == 1:
+        return candidates[0]
     parts = [p for p in re.split(r"\W+", n) if len(p) > 3]
+    token_matches: list[Material] = []
     for p in parts[:3]:
-        cand = db.query(Material).filter(Material.nombre.ilike(f"%{p}%")).first()
-        if cand:
-            return cand
+        for cand in db.query(Material).filter(Material.nombre.ilike(f"%{p}%")).limit(3).all():
+            if cand not in token_matches:
+                token_matches.append(cand)
+    if len(token_matches) == 1:
+        return token_matches[0]
     return None
+
+
+def _placa_bloque_key(placa: Placa) -> str:
+    return _norm_bloque(placa.ubicacion)
+
+
+def _find_placa_for_row(
+    session: Session,
+    *,
+    material: Material,
+    material_nombre_excel: str,
+    bloque_key: str,
+    largo: int,
+    ancho: int,
+    codigo_excel: str,
+) -> Placa | None:
+    """Coincidencia: 1) Codigo, 2) material + bloque + medidas, 3) nombre normalizado + bloque + medidas."""
+    if codigo_excel:
+        existing = session.query(Placa).filter(Placa.codigo == codigo_excel).first()
+        if existing:
+            return existing
+
+    for placa in (
+        session.query(Placa)
+        .filter(
+            Placa.material_id == material.id,
+            Placa.largo == largo,
+            Placa.ancho == ancho,
+        )
+        .all()
+    ):
+        if _placa_bloque_key(placa) == bloque_key:
+            return placa
+
+    excel_key = _material_norm_key(material_nombre_excel)
+    if not excel_key:
+        return None
+    for placa in session.query(Placa).filter(Placa.largo == largo, Placa.ancho == ancho).all():
+        if _placa_bloque_key(placa) != bloque_key:
+            continue
+        mat_row = session.query(Material).filter(Material.id == placa.material_id).first()
+        if mat_row and _material_norm_key(mat_row.nombre) == excel_key:
+            return placa
+    return None
+
+
+def _find_retazo_for_row(
+    session: Session,
+    *,
+    material: Material,
+    material_nombre_excel: str,
+    bloque_key: str,
+    largo: int,
+    ancho: int,
+    espesor: int,
+) -> Retazo | None:
+    """Coincidencia por material + bloque + medidas (+ espesor si hay)."""
+    q = session.query(Retazo).filter(Retazo.largo == largo, Retazo.ancho == ancho)
+    if espesor:
+        q = q.filter(Retazo.espesor == espesor)
+    for ret in q.all():
+        if _norm_bloque(ret.ubicacion) != bloque_key:
+            continue
+        if ret.material_id == material.id:
+            return ret
+        mat_row = session.query(Material).filter(Material.id == ret.material_id).first()
+        if mat_row and _material_norm_key(mat_row.nombre) == _material_norm_key(material_nombre_excel):
+            return ret
+    return None
+
+
+def _apply_placa_row(
+    placa: Placa,
+    *,
+    material: Material,
+    lote: Lote,
+    bloque_key: str,
+    largo: int,
+    ancho: int,
+    esp: int,
+    codigo_excel: str,
+    precio_placa: float | None,
+) -> None:
+    placa.material_id = material.id
+    placa.lote_id = lote.id
+    placa.largo = largo
+    placa.ancho = ancho
+    placa.espesor = esp
+    placa.ubicacion = bloque_key
+    if codigo_excel:
+        placa.codigo = codigo_excel[:64]
+    if precio_placa is not None:
+        placa.precio = precio_placa
+    if not placa.estado:
+        placa.estado = "disponible"
 
 
 def _get_or_create_lote(
@@ -345,11 +464,10 @@ def _import_bloques(
     *,
     create_materials: bool,
     espesor_default: int,
-) -> tuple[int, int]:
-    created_p = created_m = 0
+) -> tuple[int, int, int]:
+    created_p = created_m = updated_p = 0
     for i, r in enumerate(rows, 1):
-        bloque_raw = r["bloque"] or "SIN-BLOQUE"
-        bloque_key = re.sub(r"\s+", "", str(bloque_raw)).upper()
+        bloque_key = _norm_bloque(r["bloque"])
         nombre_mat = r["material"]
         esp = _parse_mm_from_material(nombre_mat) or espesor_default
 
@@ -385,12 +503,38 @@ def _import_bloques(
             notas="Import Excel Control de Bloques",
         )
 
-        codigo_placa = f"PLC-{bloque_key}-{i:04d}"[:64]
-        if session.query(Placa).filter(Placa.codigo == codigo_placa).first():
-            codigo_placa = f"PLC-{bloque_key}-{i:04d}-{os.urandom(2).hex()}"[:64]
-
         vm2 = r["valor_m2"]
         precio_placa = _float_or_zero(vm2) if _float_or_zero(vm2) > 0 else None
+
+        codigo_excel = (r.get("codigo") or "").strip()
+        existing = _find_placa_for_row(
+            session,
+            material=mat,
+            material_nombre_excel=nombre_mat,
+            bloque_key=bloque_key,
+            largo=r["largo_mm"],
+            ancho=r["alto_mm"],
+            codigo_excel=codigo_excel,
+        )
+        if existing:
+            _apply_placa_row(
+                existing,
+                material=mat,
+                lote=lote,
+                bloque_key=bloque_key,
+                largo=r["largo_mm"],
+                ancho=r["alto_mm"],
+                esp=esp,
+                codigo_excel=codigo_excel,
+                precio_placa=precio_placa,
+            )
+            session.add(existing)
+            updated_p += 1
+            continue
+
+        codigo_placa = codigo_excel or f"PLC-{bloque_key}-{i:04d}"[:64]
+        if session.query(Placa).filter(Placa.codigo == codigo_placa).first():
+            codigo_placa = f"PLC-{bloque_key}-{i:04d}-{os.urandom(2).hex()}"[:64]
 
         placa = Placa(
             material_id=mat.id,
@@ -405,7 +549,7 @@ def _import_bloques(
         )
         session.add(placa)
         created_p += 1
-    return created_m, created_p
+    return created_m, created_p, updated_p
 
 
 def _import_remanentes(
@@ -414,8 +558,8 @@ def _import_remanentes(
     *,
     create_materials: bool,
     espesor_default: int,
-) -> tuple[int, int]:
-    created_r = created_m = 0
+) -> tuple[int, int, int]:
+    created_r = created_m = updated_r = 0
     for i, r in enumerate(rows, 1):
         nombre_mat = r["material"]
         esp = r["espesor_mm"] or _parse_mm_from_material(nombre_mat) or espesor_default
@@ -440,8 +584,7 @@ def _import_remanentes(
             continue
 
         assert mat is not None
-        bloque_raw = r["bloque"] or ""
-        bloque_key = re.sub(r"\s+", "", str(bloque_raw)).upper() if bloque_raw else "REM"
+        bloque_key = _norm_bloque(r["bloque"]) if r["bloque"] else "REM"
         ubic = bloque_key if bloque_key else "REMANENTES"
 
         codigo_lote = f"IMPORT-RTZ-{bloque_key}-{_norm_txt(mat.nombre)[:16].upper().replace(' ', '-')}"[:64]
@@ -453,6 +596,29 @@ def _import_remanentes(
             notas="Import Excel Inventario Remanentes",
         )
 
+        existing = _find_retazo_for_row(
+            session,
+            material=mat,
+            material_nombre_excel=nombre_mat,
+            bloque_key=bloque_key,
+            largo=r["largo_mm"],
+            ancho=r["ancho_mm"],
+            espesor=int(esp),
+        )
+        if existing:
+            existing.material_id = mat.id
+            existing.lote_id = lote.id
+            existing.largo = r["largo_mm"]
+            existing.ancho = r["ancho_mm"]
+            existing.espesor = int(esp)
+            existing.ubicacion = ubic[:64] if ubic else None
+            estado_excel = (r.get("estado_excel") or "").strip().lower()
+            if estado_excel:
+                existing.estado = estado_excel[:32]
+            session.add(existing)
+            updated_r += 1
+            continue
+
         ret = Retazo(
             material_id=mat.id,
             lote_id=lote.id,
@@ -460,14 +626,101 @@ def _import_remanentes(
             ancho=r["ancho_mm"],
             espesor=int(esp),
             ubicacion=ubic[:64] if ubic else None,
-            estado="disponible",
+            estado=(str(r.get("estado_excel") or "disponible").strip().lower()[:32] or "disponible"),
             en_venta=False,
             precio=None,
         )
 
         session.add(ret)
         created_r += 1
-    return created_m, created_r
+    return created_m, created_r, updated_r
+
+
+def export_inventario_workbook(session: Session) -> bytes:
+    """Genera .xlsx con el inventario actual (mismo formato que la importación)."""
+    from io import BytesIO
+
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Control de Bloques"
+    headers_b = [
+        "Fecha",
+        "Bloque",
+        "Descripcion Material",
+        "Largo",
+        "Alto",
+        "m2",
+        "Valor m2",
+        "Codigo",
+        "Observaciones",
+    ]
+    ws.append(headers_b)
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+
+    placas = session.query(Placa).order_by(Placa.ubicacion, Placa.codigo, Placa.id).all()
+    for p in placas:
+        mat = session.query(Material).filter(Material.id == p.material_id).first()
+        lote = session.query(Lote).filter(Lote.id == p.lote_id).first() if p.lote_id else None
+        m2 = round((float(p.largo) * float(p.ancho)) / 1_000_000.0, 3) if p.largo and p.ancho else 0.0
+        fecha = (lote.fecha_ingreso if lote and lote.fecha_ingreso else datetime.now().strftime("%Y-%m-%d"))
+        valor = p.precio if p.precio else (mat.precio_m2 if mat else 0.0)
+        ws.append(
+            [
+                fecha,
+                p.ubicacion or (lote.ubicacion if lote else ""),
+                mat.nombre if mat else "",
+                p.largo,
+                p.ancho,
+                m2,
+                valor,
+                p.codigo or "",
+                (lote.notas if lote and lote.notas else ""),
+            ]
+        )
+
+    ws_r = wb.create_sheet("Inventario Remanentes")
+    headers_r = [
+        "Fecha",
+        "Material / Color",
+        "Espesor (mm)",
+        "Tipo Corte",
+        "Largo (mm)",
+        "Ancho (mm)",
+        "m2",
+        "Estado",
+        "Bloque",
+        "Obs.",
+    ]
+    ws_r.append(headers_r)
+    for cell in ws_r[1]:
+        cell.font = Font(bold=True)
+
+    retazos = session.query(Retazo).order_by(Retazo.ubicacion, Retazo.id).all()
+    for rz in retazos:
+        mat = session.query(Material).filter(Material.id == rz.material_id).first()
+        m2 = round((float(rz.largo) * float(rz.ancho)) / 1_000_000.0, 3) if rz.largo and rz.ancho else 0.0
+        ws_r.append(
+            [
+                datetime.now().strftime("%Y-%m-%d"),
+                mat.nombre if mat else "",
+                rz.espesor or "",
+                "",
+                rz.largo,
+                rz.ancho,
+                m2,
+                rz.estado or "disponible",
+                rz.ubicacion or "",
+                "",
+            ]
+        )
+
+    buf = BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
 
 
 def main() -> None:
@@ -519,25 +772,26 @@ def main() -> None:
         print(f"[INFO] SQLite: {args.sqlite_path.resolve()}")
 
     session = SessionFactory()
-    new_m_b = new_p = new_m_r = new_rz = 0
+    new_m_b = new_p = upd_p = new_m_r = new_rz = upd_rz = 0
     try:
         if args.wipe_inventory:
             _wipe_inventory(session, wipe_lotes=args.wipe_lotes)
             print("Pendiente borrar en esta transacción: placas/retazos/movimientos" + (" + lotes" if args.wipe_lotes else "") + ".")
 
         if rows_b:
-            new_m_b, new_p = _import_bloques(
+            new_m_b, new_p, upd_p = _import_bloques(
                 session, rows_b, create_materials=args.create_materials, espesor_default=args.espesor_default
             )
         if rows_r:
-            new_m_r, new_rz = _import_remanentes(
+            new_m_r, new_rz, upd_rz = _import_remanentes(
                 session, rows_r, create_materials=args.create_materials, espesor_default=args.espesor_default
             )
 
         session.commit()
         print(
             f"Listo. Materiales nuevos (bloques/rem): {new_m_b + new_m_r}. "
-            f"Placas: {new_p}. Retazos: {new_rz}."
+            f"Placas: {new_p} nuevas, {upd_p} actualizadas. "
+            f"Retazos: {new_rz} nuevos, {upd_rz} actualizados."
         )
     except Exception:
         session.rollback()
