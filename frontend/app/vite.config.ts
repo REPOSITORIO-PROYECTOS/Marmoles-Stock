@@ -3,8 +3,13 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react() as any],
+  // Dimarmi: producción = solo depósito, salvo que el build pase VITE_DEPOSITO_ONLY explícito.
+  define:
+    mode === 'production' && process.env.VITE_DEPOSITO_ONLY === undefined
+      ? { 'import.meta.env.VITE_DEPOSITO_ONLY': JSON.stringify('true') }
+      : undefined,
   resolve: {
     extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
     dedupe: ['react', 'react-dom', 'react-dnd', 'react-dnd-html5-backend'],
@@ -126,4 +131,4 @@ export default defineConfig({
     setupFiles: './src/__tests__/setup.ts',
     globals: true,
   },
-});
+}));
