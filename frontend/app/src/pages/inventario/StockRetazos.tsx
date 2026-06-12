@@ -9,8 +9,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../componen
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Switch } from '../../components/ui/switch';
 import { Separator } from '../../components/ui/separator';
-import { Package, DollarSign, Edit, Filter, Layers, Trash2, Printer, Square } from 'lucide-react';
+import { Package, DollarSign, Edit, Filter, Layers, Trash2, Printer, Square, Plus } from 'lucide-react';
 import { RetazoMicroPlanoCanvas, type PlanoRectNorm } from './RetazoMicroPlanoCanvas';
+import { DialogCrearMaterial } from './components/compras/DialogCrearMaterial';
+import type { NuevoMaterialForm } from './types/compras.types';
+import { notifyError, notifySuccess } from '../../utils/notifications';
 
 interface Retazo {
   id: string;
@@ -43,6 +46,7 @@ export function StockRetazos() {
   const [filtroEstado, setFiltroEstado] = useState('disponible');
   const [busqueda, setBusqueda] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isMaterialDialogOpen, setIsMaterialDialogOpen] = useState(false);
   const [nuevoMaterialId, setNuevoMaterialId] = useState('');
   const [nuevoLoteId, setNuevoLoteId] = useState('');
   const [nuevoAncho, setNuevoAncho] = useState<string>('');
@@ -101,12 +105,58 @@ export function StockRetazos() {
     } catch { }
   };
 
+  const cargarMateriales = async () => {
+    try {
+      const mats = await get<Array<{ id: string; nombre: string; precio_m2: number }>>('/api/materiales');
+      setMateriales(mats);
+      return mats;
+    } catch {
+      return [];
+    }
+  };
+
+  const seleccionarMaterialNuevo = async (materialId: string, mats?: Array<{ id: string; nombre: string; precio_m2: number }>) => {
+    const lista = mats ?? materiales;
+    setNuevoMaterialId(materialId);
+    const mat = lista.find(m => m.id === materialId);
+    setPrecioPlanchaM2(String(mat?.precio_m2 ?? ''));
+    try {
+      const lots = await get<Array<{ id: string; codigo_lote: string }>>(`/api/lotes?material_id=${materialId}`);
+      const list = Array.isArray(lots) ? lots : [];
+      setLotesDisponibles(list);
+      setNuevoLoteId(list[0]?.id || '');
+    } catch {
+      setLotesDisponibles([]);
+      setNuevoLoteId('');
+    }
+  };
+
+  const handleCrearMaterial = async (form: NuevoMaterialForm) => {
+    try {
+      const created = await post<{ id: string; nombre: string; precio_m2: number }>('/api/materiales', {
+        nombre: form.nombre,
+        espesor_mm: form.espesor_mm,
+        ancho_m: form.ancho_m,
+        alto_m: form.alto_m,
+        precio_m2: form.precio_m2,
+      });
+      notifySuccess('Material creado exitosamente');
+      const mats = await cargarMateriales();
+      const nuevoId = created?.id || mats.find(m => normalizarNombre(m.nombre) === normalizarNombre(form.nombre))?.id;
+      if (nuevoId) {
+        await seleccionarMaterialNuevo(nuevoId, mats);
+      }
+      window.dispatchEvent(new Event('marmoles:material-creado'));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Error al crear material';
+      notifyError(message);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     (async () => {
-      try {
-        const mats = await get<Array<{ id: string; nombre: string; precio_m2: number }>>('/api/materiales');
-        setMateriales(mats);
-      } catch { }
+      await cargarMateriales();
       await cargarRetazos();
     })();
   }, []);
@@ -721,7 +771,7 @@ export function StockRetazos() {
           setPolySnapMode(true);
         }
       }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Añadir Retazo</DialogTitle>
           </DialogHeader>
@@ -749,29 +799,42 @@ export function StockRetazos() {
             </div>
             <div>
               <Label htmlFor="material-nuevo" className="text-sm">Material</Label>
-              <Select value={nuevoMaterialId} onValueChange={async (v) => {
-                setNuevoMaterialId(v);
-                const mat = materiales.find(m => m.id === v);
-                setPrecioPlanchaM2(String(mat?.precio_m2 ?? ''));
-                try {
-                  const lots = await get<Array<{ id: string; codigo_lote: string }>>(`/api/lotes?material_id=${v}`);
-                  const list = Array.isArray(lots) ? lots : [];
-                  setLotesDisponibles(list);
-                  setNuevoLoteId(list[0]?.id || '');
-                } catch {
-                  setLotesDisponibles([]);
-                  setNuevoLoteId('');
-                }
-              }}>
-                <SelectTrigger id="material-nuevo">
-                  <SelectValue placeholder="Seleccionar material" />
-                </SelectTrigger>
-                <SelectContent>
-                  {materialesUnicosPorNombre.map(material => (
-                    <SelectItem key={material.id} value={material.id}>{material.nombre}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select
+                  value={nuevoMaterialId}
+                  onValueChange={async (v) => {
+                    if (v === '__nuevo__') {
+                      setIsMaterialDialogOpen(true);
+                      return;
+                    }
+                    await seleccionarMaterialNuevo(v);
+                  }}
+                >
+                  <SelectTrigger id="material-nuevo" className="flex-1">
+                    <SelectValue placeholder="Seleccionar material" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__nuevo__" className="text-blue-600 font-medium">
+                      <span className="flex items-center gap-2">
+                        <Plus className="h-4 w-4" />
+                        Nuevo material
+                      </span>
+                    </SelectItem>
+                    {materialesUnicosPorNombre.map(material => (
+                      <SelectItem key={material.id} value={material.id}>{material.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  title="Crear nuevo material"
+                  onClick={() => setIsMaterialDialogOpen(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             {nuevoMaterialId && (
@@ -982,7 +1045,7 @@ export function StockRetazos() {
           setEditPlanoRectNorm(null);
         }
       }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Editar Retazo</DialogTitle>
           </DialogHeader>
@@ -1070,6 +1133,12 @@ export function StockRetazos() {
           )}
         </DialogContent>
       </Dialog>
+
+      <DialogCrearMaterial
+        isOpen={isMaterialDialogOpen}
+        onClose={() => setIsMaterialDialogOpen(false)}
+        onCrearMaterial={handleCrearMaterial}
+      />
     </div>
   );
 }

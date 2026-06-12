@@ -18,6 +18,29 @@ const PAD = 24;
 const CANVAS_W = 420;
 const CANVAS_H = 220;
 
+function strokeRoundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) {
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(x, y, w, h, r);
+    return;
+  }
+  if (typeof ctx.rect === 'function') {
+    ctx.rect(x, y, w, h);
+    return;
+  }
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + w, y);
+  ctx.lineTo(x + w, y + h);
+  ctx.lineTo(x, y + h);
+  ctx.closePath();
+}
+
 function drawCanvas(
   ctx: CanvasRenderingContext2D,
   largo: number,
@@ -38,7 +61,7 @@ function drawCanvas(
   ctx.strokeStyle = '#9c8c7a';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.roundRect(rx, ry, rw, rh, 4);
+  strokeRoundRect(ctx, rx, ry, rw, rh, 4);
   ctx.fill();
   ctx.stroke();
 

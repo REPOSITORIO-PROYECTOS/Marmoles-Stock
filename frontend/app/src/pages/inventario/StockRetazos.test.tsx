@@ -3,6 +3,10 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StockRetazos } from './StockRetazos';
 
+vi.mock('./RetazoMicroPlanoCanvas', () => ({
+  RetazoMicroPlanoCanvas: () => null,
+}));
+
 const setupFetchMock = (options?: {
     initialRetazos?: any[];
 }) => {
